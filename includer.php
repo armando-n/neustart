@@ -5,6 +5,7 @@ $includePath = get_include_path();
 foreach ($paths as $path) {
 	$includePath .= PATH_SEPARATOR . $pathDir . DIRECTORY_SEPARATOR . $path;
 }
+$includePath .= PATH_SEPARATOR . $pathDir . DIRECTORY_SEPARATOR;
 set_include_path($includePath);
 
 spl_autoload_register('myClassLoader');

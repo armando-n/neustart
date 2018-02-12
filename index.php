@@ -1,8 +1,29 @@
 <?php
+include_once("includer.php");
+require_once('vendor'.DIRECTORY_SEPARATOR.'autoload.php');
+use Twilio\Rest\Client;
 try {
 // if (ob_get_contents() === false)
-//     ob_start();
-include_once("includer.php");
+//     ob_start();\
+
+$sid = getenv('TWILIO_SID');
+$testSid = getenv('TWILIO_TEST_SID');
+$token = getenv('TWILIO_TOKEN');
+$testToken = getenv('TWILIO_TEST_TOKEN');
+$twilioPhone = getenv('TWILIO_PHONE');
+$myPhone = getenv('MY_PHONE');
+$client = new Client($sid, $token);
+
+// send a text
+$client->messages->create(
+	$myPhone,
+	array(
+		'from' => $twilioPhone,
+		'body' => 'Knick nack paddywhack ' .
+			'give a dog a bone.'
+	)
+);
+
 if (!isset($_SESSION)) {
     session_start();
     $_SESSION['styles'] = array();
@@ -13,6 +34,7 @@ if (!isset($_SESSION)) {
 }
 
 $_SESSION['base'] = '';
+print "base: ".$_SESSION['base']."<br>\n";
 
 // parse the request URL
 $url = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH); // e.g. /dhma/home or /dhma/signup_show
