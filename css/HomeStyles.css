@@ -1,0 +1,15 @@
+aside#faq h2 {
+	font-size: 1.10em;
+}
+
+section#screenshots p {
+	text-align: center;
+}
+
+/* large devices */
+@media screen and (min-width: 1200px) {
+    section#screenshots div.row {
+		display: flex;
+		align-items: flex-end;
+	}
+}

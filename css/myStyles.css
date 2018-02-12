@@ -1,0 +1,104 @@
+h1#pagetitle {
+	font-size: 1.8em;
+	text-align: center;
+	margin-bottom: 1.6em;
+}
+
+p {
+	font-size: 1.35em;
+	margin-top: 1.5em;
+	margin-bottom: 1.5em;
+}
+
+legend {
+	font-size: 1.3em;
+}
+
+footer h3 {
+	font-size: 1.15em;
+}
+
+td .glyphicon {
+	display: block;
+	margin: 0 auto;
+	text-align: center;
+}
+
+.text-danger {
+	color: #d9534f;
+}
+
+.text-success {
+	color: #5cb85c;
+}
+
+#brand-image {
+	display: inline-block;
+}
+div.navbar-header > .changeTheme {
+	display: inline-block;
+	float: right;
+	padding-right: 20px;
+}
+.changeTheme > .lightTheme {
+	display: inline-block;
+	line-height: 20px;
+	font-variant: small-caps;
+	font-size: small;
+	font-weight: bold;
+	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+	color: #444444;
+	background-color: #E5E5E5;
+	border: 1px solid #133451;
+	border-radius: 6px 0px 0px 6px;
+	padding-left: 8px;
+	padding-right: 8px;
+	padding-top: 5px;
+	padding-bottom: 5px;
+	margin-top: 10px;
+	margin-bottom: 10px;
+	text-decoration: none;
+}
+#main-nav .changeTheme > a.disable.lightTheme, #main-nav .changeTheme > a.disable.lightTheme:hover {
+    color: #AAAAAA;
+    cursor: default;
+    background-color: #2669A3;
+}
+#main-nav .changeTheme > a.disable.darkTheme, #main-nav .changeTheme > a.disable.darkTheme:hover {
+    color: #222222;
+    cursor: default;
+    background-color: #2669A3;
+}
+.changeTheme > .darkTheme {
+    display: inline-block;
+    line-height: 20px;
+    font-variant: small-caps;
+    font-size: small;
+    font-weight: bold;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: #C8C8C8;
+    background-color: #222222;
+    border: 1px solid #133451;
+    border-radius: 0px 6px 6px 0px;
+    padding-left: 8px;
+    padding-right: 8px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    text-decoration: none;
+}
+
+/* extra small devices */
+@media screen and (max-width: 767px) {
+    #mainNav > ul > li.changeTheme {
+        display: none;
+    }
+}
+
+/* small/medium/large devices */
+@media screen and (min-width: 768px) {
+    div.navbar-header > .changeTheme {
+        display: none;
+    }
+}

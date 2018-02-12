@@ -12,7 +12,7 @@ if (!isset($_SESSION)) {
     $_SESSION['configFile'] = 'myConfig.ini';
 }
 
-$_SESSION['base'] = '/';
+$_SESSION['base'] = '';
 
 // parse the request URL
 $url = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH); // e.g. /dhma/home or /dhma/signup_show
@@ -51,6 +51,18 @@ if ($urlPartsLength > 2) {
 
 // run the requested controller
 switch ($control) {
+	case 'admin' : AdministratorController::run(); break;
+	case "login" : LoginController::run(); break;
+	case "logout" : LoginController::run(); break;
+	case "profile" : ProfileController::run(); break;
+	case "signup" : SignupController::run(); break;
+	case "measurements" : MeasurementsController::run(); break;
+	case 'measurementsOptions' : MeasurementsOptionsController::run(); break;
+	case "members_show" :
+	case "users" :
+	case "members" : UsersController::run(); break;
+	case "faq" : FaqView::show(); break;
+	case "demo" : DemoController::run(); break;
     case "home":
     default:
         $_SESSION['styles'] = array('HomeStyles.css');
