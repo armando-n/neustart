@@ -33,7 +33,7 @@ class TextMessageController extends Controller {
     	if (!isset($_SESSION['arguments']) || count($_SESSION['arguments']) < 1 || trim($_SESSION['arguments'][0]) === '')
     		return;
 
-    	$textBody = $_SESSION['arguments'][0];
+		$textBody = urldecode($_SESSION['arguments'][0]);
     	$sid = getenv('TWILIO_SID');
     	$testSid = getenv('TWILIO_TEST_SID');
     	$token = getenv('TWILIO_TOKEN');

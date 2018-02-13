@@ -56,13 +56,11 @@ function parseUrl() {
 		unset($_SESSION['action']);
 
 	// process any arguments
-	$arguments = array();
+	$_SESSION['arguments'] = array();
 	if ($urlPartsLength > 2) {
 		for ($i = 2; $i < $urlPartsLength; $i++)
-			$arguments[] = $controlParts[$i];
-			$_SESSION['arguments'] = $arguments;
-	} else
-		unset($_SESSION['arguments']);
+			$_SESSION['arguments'][] = $urlParts[$i];
+	}
 }
 
 function loadRequestedController() {
