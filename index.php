@@ -66,6 +66,7 @@ function parseUrl() {
 function loadRequestedController() {
 	switch ($_SESSION['control']) {
 		case 'text': TextMessageController::run(); break;
+		case 'call': PhoneCallController::run(); break;
 		case "home":
 		default:
 			$_SESSION['styles'] = array('HomeStyles.css');
