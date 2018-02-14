@@ -1,0 +1,60 @@
+EMAIL_EMPTY Your email cannot be empty or only contain white space
+EMAIL_TOO_LONG Your email address cannot contain more than 30 characters
+EMAIL_INVALID Your email is invalid
+PASSWORDS_DO_NOT_MATCH Your submitted passwords do not match each other
+PASSWORD_EMPTY Your password cannot be empty or only contain white space
+PASSWORD_TOO_SHORT Your password must contain at least 6 characters
+PASSWORD_TOO_LONG Your password cannot contain more than 20 characters
+FIRST_NAME_TOO_LONG Your first name cannot contain more than 30 characters
+FIRST_NAME_HAS_INVALID_CHARS Your first name contains invalid characters
+LAST_NAME_TOO_LONG Your last name cannot contain more than 30 characters
+LAST_NAME_HAS_INVALID_CHARS Your last name contains invalid characters
+USER_NAME_EMPTY Your user name cannot be empty or only contain white space
+USER_NAME_HAS_INVALID_CHARS Your user name can only contain letters, numbers, and dashes
+USER_NAME_TOO_LONG Your user name cannot contain more than 20 characters
+PHONE_TOO_LONG Your phone number cannot contain more than 15 characters
+PHONE_INVALID Your phone number is invalid
+GENDER_INVALID Your gender is invalid
+DOB_INVALID Your date of birth is invalid
+FACEBOOK_INVALID Your facebook URL is invalid
+THEME_INVALID Your theme is invalid
+ACCENT_COLOR_INVALID Your accent color is invalid
+DATE_EMPTY The date cannot be empty or contain only white space
+DATE_HAS_INVALID_CHARS The date contains invalid characters
+TIME_EMPTY The time cannot be empty or contain only white space
+TIME_HAS_INVALID_CHARS The time contains invalid characters
+DATE_AND_TIME_INVALID The date and time are invalid
+SYSTOLIC_PRESSURE_EMPTY The systolic pressure cannot be empty or contain only white space
+SYSTOLIC_PRESSURE_HAS_INVALID_CHARS The systolic pressure can only contain numbers
+DIASTOLIC_PRESSURE_EMPTY The diastolic pressure cannot be empty or contain only white space
+DIASTOLIC_PRESSURE_HAS_INVALID_CHARS The disastolic pressure can only contain numbers
+UNITS_EMPTY The units cannot be empty or contain only white space
+UNITS_INVALID The specified units are invalid
+GLUCOSE_EMPTY The glucose measurement cannot be empty or contain only white space
+GLUCOSE_HAS_INVALID_CHARS The glucose measurement can only contain numbers, and a decimal point
+CALORIES_EMPTY The calories consumed cannot be empty or contain only white space
+CALORIES_HAS_INVALID_CHARS The calories consumed can only contain numbers
+DURATION_EMPTY The duration cannot be empty or contain only white space
+DURATION_HAS_INVALID_CHARS The duration can only contain numbers
+TYPE_EMPTY The type cannot be empty or contain only white space
+TYPE_HAS_INVALID_CHARS The type can only contain letters, numbers, spaces, dashes and underscores
+WEIGHT_EMPTY The weight cannot be empty or contain only white space
+WEIGHT_HAS_INVALID_CHARS The weight can only contain numbers, and a decimal point
+NOTES_ARE_TOO_LONG The notes cannot contain more than 255 characters
+ADD_USER_FAILED Failed to add user to the database
+DB_CONFIG_NOT_FOUND Failed to access database: database config file not found
+USER_NAME_EXISTS User name already exists. Please try another.
+ADD_USER_PROFILE_FAILED Failed to add profile to the database
+ADD_MEASUREMENT_FAILED Failed to add measurement to database
+EDIT_MEASUREMENT_FAILED Failed to edit measurement in database
+FACEBOOK_TOO_LONG Facebook cannot be more than 50 characters long.
+NULL_INPUT Input cannot be null
+TIME_FORMAT_INVALID Time format can only be 12 hour or 24 hour
+NUM_ROWS_INVALID The number of rows must be an integer of 5 digits or less
+CHART_TYPE_INVALID The specified chart type is invalid
+DATE_INVALID The specified date is invalid
+OPTIONS_NAME_EMPTY Preset name cannot be empty
+TABLE_SIZE_INVALID The table size must be an integer of 5 digits or less
+CHART_PLACEMENT_INVALID The only valid chart placements are left, right, top, and bottom
+DURATION_FORMAT_INVALID Duration format can only be minutes, hours, or hours:minutes
+INVALID_ACTIVE_MEASUREMENT Unrecognized active measurement. It must be one of the supported measurement types.
