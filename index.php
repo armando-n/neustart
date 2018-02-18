@@ -40,7 +40,7 @@ function parseUrl() {
 	$urlPartsLength = count($urlParts);
 
 	// determine control, if any
-	if ($urlPartsLength > 1) {
+	if ($urlPartsLength > 0) {
 		$control = $urlParts[0];
 		if ( ($hashPos = strrpos($control, '#')) !== false)
 			$control = substr($control, 0, $hashPos);
@@ -53,7 +53,7 @@ function parseUrl() {
 		$action = $urlParts[1];
 		$_SESSION['action'] = $action;
 	} else
-		unset($_SESSION['action']);
+		$_SESSION['action'] = '';
 
 	// process any arguments
 	$_SESSION['arguments'] = array();
@@ -65,6 +65,8 @@ function parseUrl() {
 
 function loadRequestedController() {
 	switch ($_SESSION['control']) {
+		case 'user': UsersController::run(); break;
+		case 'dashboard': DashboardView::show(); break;
 		case 'text': TextMessageController::run(); break;
 		case 'call': PhoneCallController::run(); break;
 		case "home":
