@@ -64,7 +64,7 @@ function parseUrl() {
 }
 
 function loadRequestedController() {
-	switch ($_SESSION['control']) {
+	switch ($_SESSION['control'] ?? '') {
 		case 'user': UsersController::run(); break;
 		case 'dashboard': DashboardView::show(); break;
 		case 'text': TextMessageController::run(); break;

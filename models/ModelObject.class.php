@@ -60,7 +60,36 @@ abstract class ModelObject {
 		return $name;
 	}
 
-	protected function validateNumber($fieldName, $isRequired = false) {
+	protected function validateString($fieldName, $regex, $failMessage, $isRequired = false) {
+		$str = $this->extractForm($this->formInput, $fieldName);
+		if ($isRequired && empty($str)) {
+			$this->setError($fieldName, 'Name is required.');
+			return;
+		}
+
+		$options = array('options' => array('regexp' => $regex));
+		if (!filter_var($name, FILTER_VALIDATE_REGEXP, $options)) {
+			$this->setError($fieldName, $failMessage);
+			return;
+		}
+	}
+
+	protected function validateEnum($fieldName, array $allowedValues, $isRequired = false) {
+		$enum = $this->extractForm($this->formInput, $fieldName);
+		if ($isRequired && empty($enum)) {
+			$this->setError($fieldName, 'This field is required.');
+			return;
+		}
+
+		if (!in_array($enum, $allowedValues)) {
+			$this->setError($fieldName, 'This field is invalid.');
+			return;
+		}
+
+		return $enum;
+	}
+
+	protected function validateNumber($fieldName, $isRequired = false, $min = null, $max = null) {
 		$number = $this->extractForm($this->formInput, $fieldName);
 		if ($isRequired && empty($number)) {
 			$this->setError($fieldName, 'This field is required. Enter a valid number.');
@@ -69,6 +98,16 @@ abstract class ModelObject {
 
 		if (!empty($number) && !is_numeric($number)) {
 			$this->setError($fieldName, 'This field expects numbers only. Enter a valid number.');
+			return;
+		}
+
+		if (!is_null($min) && $number < $min) {
+			$this->setError($fieldName, "This field cannot be lower than $min.");
+			return;
+		}
+
+		if (!is_null($max) && $number > $max) {
+			$this->setError($fieldName, "This field cannot be higher than $max.");
 			return;
 		}
 

@@ -27,104 +27,56 @@ create table VerificationCodes(
 drop table if exists UserProfiles;
 create table UserProfiles(
 	profileID             integer primary key auto_increment,
-	firstName             varchar(50),
-	lastName              varchar(50),
-	email                 varchar(50) unique,
-	timezone              varchar(50),
+	timezoneOffset        varchar(50),
 	country               varchar(50),
-	picture               varchar(50) default 'profile_default.png',
-	facebook              varchar(50),
-	theme                 varchar(20),
-	accentColor           char(7), -- example: '#0088BB'
-	isProfilePublic       boolean default false,
-	isPicturePublic       boolean default false,
-	isReceivingTexts      boolean default false,
-	isReceivingCalls      boolean default false,
 	stayLoggedIn          boolean default false,
+	isSnoozed             boolean default false,
 	userID                integer not null,
 	foreign key (userID) references Users (userID) on delete cascade
 );
 
-drop table if exists WeeklyTextProfiles;
-create table WeeklyTextProfiles(
-	profileID             integer primary key auto_increment,
-	name                  varchar(50),
-	defaultStatus         enum('receive', 'mute') default 'mute',
-	defaultStyle          enum('single', 'repeating') default 'single',
-	customMessage         varchar(255),
-	isProfileActive       boolean default false,
-	userID                integer not null,
-	foreign key (userID) references Users (userID) on delete cascade
-);
-
-drop table if exists WeeklyTextProfiles_TimeBlocks;
-create table WeeklyTextProfiles_TimeBlocks(
-	blockID               integer primary key auto_increment,
-	status                enum('receive', 'mute') default 'receive',
-	style                 enum('single', 'repeating') default 'single',
-	dayOfWeek             enum('sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday') not null,
-	startHour             integer not null,
-	startMinute           integer not null,
-	endHour               integer not null,
-	endMinute             integer not null,
-	profileID             integer not null,
-	foreign key (profileID) references WeeklyTextProfiles (profileID) on delete cascade
-);
-
-drop table if exists TransientTextTimeBlocks;
-create table TransientTextTimeBlocks(
-	blockID               integer primary key auto_increment,
-	status                enum('receive', 'mute') default 'receive',
-	style                 enum('single', 'repeating') default 'single',
-	startTime             date not null,
-	endTime               date not null,
-	userID                integer not null,
-	foreign key (userID) references Users (userID) on delete cascade
-);
-
-drop table if exists WeeklyCallProfiles;
-create table WeeklyCallProfiles(
-	profileID             integer primary key auto_increment,
-	name                  varchar(50),
-	defaultStatus         enum('receive', 'mute') default 'mute',
-	customMessage         varchar(255),
-	isProfileActive       boolean default false,
-	userID                integer not null,
-	foreign key (userID) references Users (userID) on delete cascade
-);
-
-drop table if exists WeeklyCallProfiles_TimeBlocks;
-create table WeeklyCallProfiles_TimeBlocks(
-	blockID               integer primary key auto_increment,
-	status                enum('receive', 'mute') default 'receive',
-	dayOfWeek             enum('sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday') not null,
-	startHour             integer not null,
-	startMinute           integer not null,
-	endHour               integer not null,
-	endMinute             integer not null,
-	profileID             integer not null,
-	foreign key (profileID) references WeeklyCallProfiles (profileID) on delete cascade
-);
-
-drop table if exists TransientCallTimeBlocks;
-create table TransientCallTimeBlocks(
-	blockID               integer primary key auto_increment,
-	status                enum('receive', 'mute') default 'receive',
-	startTime             date not null,
-	endTime               date not null,
-	userID                integer not null,
-	foreign key (userID) references Users (userID) on delete cascade
-);
-
-drop table if exists BundledWeeklyProfiles;
-create table BundledWeeklyProfiles(
+drop table if exists WeeklyContactProfiles;
+create table WeeklyContactProfiles(
 	profileID             integer primary key auto_increment,
 	name                  varchar(50) not null,
-	textProfileID         integer not null,
-	callProfileID         integer not null,
+	customMessage         varchar(255),
+	isProfileActive       boolean not null default false,
 	userID                integer not null,
-	foreign key (textProfileID) references WeeklyTextProfiles (profileID) on delete cascade,
-	foreign key (callProfileID) references WeeklyCallProfiles (profileID) on delete cascade,
+	foreign key (userID) references Users (userID) on delete cascade
+);
+
+drop table if exists WeeklyContactProfiles_TimeBlocks;
+create table WeeklyContactProfiles_TimeBlocks(
+	blockID               integer primary key auto_increment,
+	dayOfWeek             enum('sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday') not null,
+	startHour             integer not null,
+	startMinute           integer not null,
+	endHour               integer not null,
+	endMinute             integer not null,
+	isReceivingTexts      boolean not null default false,
+	isReceivingCalls      boolean not null default false,
+	isTextRepeating       boolean not null default false,
+	isCallRepeating       boolean not null default false,
+	repeatTextDuration    integer not null default 5,
+	repeatCallDuration    integer not null default 10,
+	comment               varchar(255),
+	profileID             integer not null,
+	foreign key (profileID) references WeeklyContactProfiles (profileID) on delete cascade
+);
+
+drop table if exists TransientContactTimeBlocks;
+create table TransientContactTimeBlocks(
+	blockID               integer primary key auto_increment,
+	startTime             datetime not null,
+	endTime               datetime not null,
+	isReceivingTexts      boolean not null default false,
+	isReceivingCalls      boolean not null default false,
+	isTextRepeating       boolean not null default false,
+	isCallRepeating       boolean not null default false,
+	repeatTextDuration    integer not null default 5,
+	repeatCallDuration    integer not null default 10,
+	comment               varchar(255),
+	userID                integer not null,
 	foreign key (userID) references Users (userID) on delete cascade
 );
 
@@ -140,19 +92,7 @@ create table Characters(
 
 -- delimiter //
 
--- create procedure insertVerificationCode(in code int, in userID int)
--- 	begin
--- 		set @eventname = concat('ver-code_', userID);
--- 		drop event if exists `@eventname`;
--- 		delete from VerificationCodes where userID = userID;
-
--- 		insert into VerificationCodes (code, userID)
--- 			values (code, userID);
-
--- 		create event @eventname
--- 		on schedule at CURRENT_TIMESTAMP + interval 2 minute
--- 		do delete from VerificationCodes where userID = userID;
--- 	end//
+-- stored procedures, functions, triggers, etc. goes here
 
 -- delimiter ;
 
