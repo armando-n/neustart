@@ -36,13 +36,17 @@ class WeeklyContactProfilesDB {
 	}
 
 	/** Returns an array of WeeklyContactProfile objects for all users in the database */
-	public static function getAllForUser($userID): ?array {
+	public static function getAllByUser($userID): ?array {
 		$allContactProfiles = array();
 
 		try {
 			$db = Database::getDB();
-			$stmt = $db->prepare('select * from WeeklyContactProfiles join Users using (userID)');
-			$stmt->execute();
+			$stmt = $db->prepare(
+				'select *
+				from WeeklyContactProfiles join Users using (userID)
+				where userID = :userID'
+			);
+			$stmt->execute(array(':userID' => $userID));
 
 			foreach ($stmt as $row) {
 				$profile = new WeeklyContactProfile($row);

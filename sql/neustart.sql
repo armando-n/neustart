@@ -42,7 +42,8 @@ create table WeeklyContactProfiles(
 	customMessage         varchar(255),
 	isProfileActive       boolean not null default false,
 	userID                integer not null,
-	foreign key (userID) references Users (userID) on delete cascade
+	foreign key (userID) references Users (userID) on delete cascade,
+	constraint unique_profile_name unique(name, userID)
 );
 
 drop table if exists WeeklyContactProfiles_TimeBlocks;
