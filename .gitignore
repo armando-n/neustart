@@ -3,6 +3,9 @@
 ### Misc ###
 phpinfo.php
 
+### NPM ###
+node_modules/
+
 ### Visual Studio Code
 .vscode/
 !.vscode/settings.json

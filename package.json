@@ -1,0 +1,9 @@
+{
+	"name": "neustart-contested",
+	"version": "0.0.1",
+	"dependencies": {
+		"moment": "^2.20.1",
+		"moment-timezone": "^0.5.14",
+		"twix": "^1.2.1"
+	}
+}
