@@ -27,7 +27,7 @@ create table VerificationCodes(
 drop table if exists UserProfiles;
 create table UserProfiles(
 	profileID             integer primary key auto_increment,
-	timezoneOffset        varchar(50),
+	timezone              varchar(255),
 	country               varchar(50),
 	stayLoggedIn          boolean default false,
 	isSnoozed             boolean default false,
@@ -112,18 +112,62 @@ insert into Users (userName, password, mainName, phone) values
 update Users set isAdministrator = true where userName = 'admin';
 
 -- UserProfile data
-insert into UserProfiles (firstName, lastName, email, country, picture, facebook, theme, accentColor, isProfilePublic,  isPicturePublic, stayLoggedIn, userID)
+insert into UserProfiles (timezone, country, stayLoggedIn, isSnoozed, userID)
 	values
-		("Member", "Guy", "member@email.com", "United States of America", "member.jpg", null, "light", "#0088BB", true, true, false, 1),
-		("Robin", "Scherbatsky", "robbins@email.com", "United States of America", "robbins.jpg", "http://www.facebook.com/robbins", "light", "#0088BB", true, true, true, 2),
-		("John", "Smith", "johns@email.com", "United States of America", "john-s.jpg", null, "dark", "#BB0000", false, false, true, 3),
-		("Bob", "Roberts", "bobrob@email.com", "United States of America", "bob.jpg", null, "light", "#44DD88", true, false, true, 4),
-		("Sarah", "Kinberg", "sarahk@email.com", "United States of America", "sarahk.jpg", null, "light", "#0088BB", true, true, false, 5),
-		("Jason", "McMann", "jason@email.com", "United States of America", "whatup.jpg", null, "dark", "#0088BB", true, true, false, 6);
-insert into UserProfiles(email, userID)
-	values
-		('deleteme1@email.com', 7),
-		('deleteme2@email.com', 8),
-		('deleteme3@email.com', 9);
-insert into UserProfiles(email, userID) values ('admin@email.com', 10);
+		("America/Los Angeles", "United States", false, false, 1),
+		("America/Los Angeles", "United States", false, false, 2),
+		("America/Los Angeles", "United States", false, false, 3),
+		("America/Los Angeles", "United States", false, false, 4),
+		("America/Los Angeles", "United States", false, false, 5),
+		("America/Los Angeles", "United States", false, false, 6);
 
+insert into WeeklyContactProfiles (name, isProfileActive, userID)
+	values ('Profile 1', true, 10);
+
+insert into WeeklyContactProfiles_TimeBlocks (
+		dayOfWeek,
+		startHour,
+		startMinute,
+		endHour,
+		endMinute,
+		isReceivingTexts,
+		isReceivingCalls,
+		isTextRepeating,
+		isCallRepeating,
+		repeatTextDuration,
+		repeatCallDuration,
+		comment,
+		profileID
+	)
+	values
+		('sunday', 0, 0, 23, 59, true, true, false, false, 5, 10, 'I hope this works', 1),
+		('monday', 0, 0, 8, 0, false, false, false, false, 5, 10, 'I hope this works', 1),
+		('monday', 8, 1, 23, 0, true, true, false, false, 5, 10, 'I hope this works', 1),
+		('monday', 23, 1, 23, 59, false, false, false, false, 5, 10, 'I hope this works', 1),
+		('tuesday', 0, 0, 8, 0, false, false, false, false, 5, 10, 'I hope this works', 1),
+		('tuesday', 8, 1, 23, 0, true, true, false, false, 5, 10, 'I hope this works', 1),
+		('wednesday', 0, 0, 8, 0, false, false, false, false, 5, 10, 'I hope this works', 1),
+		('wednesday', 8, 1, 23, 0, true, true, false, false, 5, 10, 'I hope this works', 1),
+		('wednesday', 23, 1, 23, 59, false, false, false, false, 5, 10, 'I hope this works', 1),
+		('thursday', 0, 0, 8, 0, false, false, false, false, 5, 10, 'I hope this works', 1),
+		('thursday', 8, 1, 23, 0, true, true, false, false, 5, 10, 'I hope this works', 1),
+		('thursday', 23, 1, 23, 59, false, false, false, false, 5, 10, 'I hope this works', 1),
+		('friday', 0, 0, 10, 0, false, false, false, false, 5, 10, 'I hope this works', 1),
+		('friday', 10, 1, 23, 59, true, true, false, false, 5, 10, 'I hope this works', 1),
+		('saturday', 0, 0, 23, 59, true, true, false, false, 5, 10, 'I hope this works', 1);
+
+insert into TransientContactTimeBlocks (
+		startTime,
+		endTime,
+		isReceivingTexts,
+		isReceivingCalls,
+		isTextRepeating,
+		isCallRepeating,
+		repeatTextDuration,
+		repeatCallDuration,
+		comment,
+		userID
+	)
+	values
+		('2018-02-22 13:00:00', '2018-02-22 15:00:00', false, false, false, false, 5, 10, 'Car Maintenance Appointment', 10),
+		('2018-02-23 18:00:00', '2018-02-22 19:30:00', false, false, false, false, 5, 10, 'Trip to Wakanda', 10);
