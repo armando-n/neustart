@@ -26,6 +26,7 @@ function initSession() {
 		session_start();
 		$_SESSION['styles'] = array();
 		$_SESSION['scripts'] = array();
+		$_SESSION['localScripts'] = array();
 		$_SESSION['libraries'] = array();
 		$_SESSION['dbName'] = 'neustart';
 		$_SESSION['configFile'] = 'myConfig.ini';
@@ -69,6 +70,7 @@ function loadRequestedController() {
 		case 'dashboard': DashboardView::show(); break;
 		case 'text': TextMessageController::run(); break;
 		case 'call': PhoneCallController::run(); break;
+		case 'schedule': ScheduleController::run(); break;
 		case "home":
 		default:
 			$_SESSION['styles'] = array('HomeStyles.css');

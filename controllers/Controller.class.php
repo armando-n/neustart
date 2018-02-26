@@ -12,7 +12,7 @@ abstract class Controller {
 	}
 
 	protected static function jsonError($errorMessage) {
-		self::jsonResponse(false, null, $errorMessage);
+		return; self::jsonResponse(false, null, $errorMessage);
 	}
 
 	protected static function jsonResponse($success, $data = null, $errorMessage = null, $successMessage = null) {

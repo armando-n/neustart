@@ -122,7 +122,7 @@ insert into UserProfiles (timezone, country, stayLoggedIn, isSnoozed, userID)
 		("America/Los Angeles", "United States", false, false, 6);
 
 insert into WeeklyContactProfiles (name, isProfileActive, userID)
-	values ('Profile 1', true, 10);
+	values ('Profile 1', true, 1);
 
 insert into WeeklyContactProfiles_TimeBlocks (
 		dayOfWeek,
@@ -140,21 +140,21 @@ insert into WeeklyContactProfiles_TimeBlocks (
 		profileID
 	)
 	values
-		('sunday', 0, 0, 23, 59, true, true, false, false, 5, 10, 'I hope this works', 1),
-		('monday', 0, 0, 8, 0, false, false, false, false, 5, 10, 'I hope this works', 1),
+		('tuesday', 8, 1, 23, 59, true, true, false, false, 5, 10, 'I hope this works', 1),
 		('monday', 8, 1, 23, 0, true, true, false, false, 5, 10, 'I hope this works', 1),
+		('wednesday', 8, 1, 23, 0, true, true, false, false, 5, 10, 'I hope this works', 1),
 		('monday', 23, 1, 23, 59, false, false, false, false, 5, 10, 'I hope this works', 1),
 		('tuesday', 0, 0, 8, 0, false, false, false, false, 5, 10, 'I hope this works', 1),
-		('tuesday', 8, 1, 23, 0, true, true, false, false, 5, 10, 'I hope this works', 1),
+		('wednesday', 23, 1, 23, 59, false, true, false, false, 5, 10, 'I hope this works', 1),
+		('monday', 0, 0, 8, 0, false, false, false, false, 5, 10, 'I hope this works', 1),
 		('wednesday', 0, 0, 8, 0, false, false, false, false, 5, 10, 'I hope this works', 1),
-		('wednesday', 8, 1, 23, 0, true, true, false, false, 5, 10, 'I hope this works', 1),
-		('wednesday', 23, 1, 23, 59, false, false, false, false, 5, 10, 'I hope this works', 1),
-		('thursday', 0, 0, 8, 0, false, false, false, false, 5, 10, 'I hope this works', 1),
-		('thursday', 8, 1, 23, 0, true, true, false, false, 5, 10, 'I hope this works', 1),
-		('thursday', 23, 1, 23, 59, false, false, false, false, 5, 10, 'I hope this works', 1),
 		('friday', 0, 0, 10, 0, false, false, false, false, 5, 10, 'I hope this works', 1),
-		('friday', 10, 1, 23, 59, true, true, false, false, 5, 10, 'I hope this works', 1),
-		('saturday', 0, 0, 23, 59, true, true, false, false, 5, 10, 'I hope this works', 1);
+		('sunday', 0, 0, 23, 59, true, true, false, false, 5, 10, 'I hope this works', 1),
+		('thursday', 8, 1, 23, 0, true, false, false, false, 5, 10, 'I hope this works', 1),
+		('thursday', 0, 0, 8, 0, false, false, false, false, 5, 10, 'I hope this works', 1),
+		('saturday', 0, 0, 23, 59, false, true, false, false, 5, 10, 'I hope this works', 1),
+		('thursday', 23, 1, 23, 59, false, false, false, false, 5, 10, 'I hope this works', 1),
+		('friday', 10, 1, 23, 59, true, true, false, false, 5, 10, 'I hope this works', 1);
 
 insert into TransientContactTimeBlocks (
 		startTime,

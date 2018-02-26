@@ -2,6 +2,10 @@
 class DashboardView {
 
 	public static function show() {
+		$_SESSION['styles'][] = 'Dashboard.css';
+		$_SESSION['scripts'][] = 'polyfils.js';
+		$_SESSION['localScripts'][] = 'd3/build/d3.js';
+		$_SESSION['localScripts'][] = 'moment/moment.js';
 		$_SESSION['scripts'][] = 'Dashboard.js';
 		HeaderView::show("Dashboard");
 		DashboardView::showBody();
@@ -17,11 +21,16 @@ class DashboardView {
 			$mainName = 'unknown';
 		}
 		?>
-<section class="row">
-	<div class="col-sm-8 col-sm-offset-2 col-md-6 col-md-offset-3">
-		<p>You're logged in, <?=$userName?>! Your main's name is <?=$mainName?>.</p>
-	</div>
-</section>
+<div class="container-fluid">
+	<section class="row justify-content-center">
+		<div class="col">
+			<p>You're logged in, <?=$userName?>! Your main's name is <?=$mainName?>.</p>
+			<div>
+				<svg id="svg"></svg>
+			</div>
+		</div>
+	</section>
+</div>
 <?php
 	}
 }

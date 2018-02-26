@@ -1,0 +1,29 @@
+#svg {
+  width: 100%;
+  height: 100%; }
+  #svg .background {
+    fill: gray; }
+  #svg rect.day {
+    fill: none;
+    stroke: #181818;
+    stroke-width: 1; }
+  #svg text.day {
+    font-weight: bold;
+    text-transform: capitalize; }
+  #svg .time-block {
+    stroke-width: 1;
+    opacity: 0.5; }
+    #svg .time-block.text-and-call {
+      stroke: #2e6e2e;
+      fill: #57aa57; }
+    #svg .time-block.text-only {
+      stroke: #0c4eb7;
+      fill: #4286f4; }
+    #svg .time-block.call-only {
+      stroke: #979724;
+      fill: #cfcf6f; }
+    #svg .time-block.no-text-or-call {
+      stroke: #862141;
+      fill: #ba5776; }
+
+/*# sourceMappingURL=Dashboard.css.map */

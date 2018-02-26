@@ -35,7 +35,7 @@ class WeeklyContactProfilesDB {
 			$profile->setError('weeklyContactProfilesDBDB', 'ADD_PROFILE_FAILED');
 	}
 
-	/** Returns an array of WeeklyContactProfile objects for all users in the database */
+	/** Returns an array of WeeklyContactProfile objects for the user with the given ID. */
 	public static function getAllByUser($userID): ?array {
 		$allContactProfiles = array();
 

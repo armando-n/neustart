@@ -1,0 +1,44 @@
+#svg {
+	width: 100%;
+	height: 100%;
+
+	.background {
+		fill: gray;
+	}
+
+	rect.day {
+		fill: none;
+		stroke: #181818;
+		stroke-width: 1;
+	}
+
+	text.day {
+		font-weight: bold;
+		text-transform: capitalize;
+	}
+
+	.time-block {
+		stroke-width: 1;
+		opacity: 0.5;
+
+		&.text-and-call {
+			stroke: #2e6e2e;
+			fill: #57aa57;
+		}
+
+		&.text-only {
+			stroke: #0c4eb7;
+			fill: #4286f4;
+		}
+
+		&.call-only {
+			stroke: #979724;
+			fill: #cfcf6f;
+		}
+
+		&.no-text-or-call {
+			stroke: #862141;
+			fill: #ba5776;
+		}
+	}
+}

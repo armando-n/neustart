@@ -68,7 +68,7 @@ abstract class ModelObject {
 		}
 
 		$options = array('options' => array('regexp' => $regex));
-		if (!filter_var($name, FILTER_VALIDATE_REGEXP, $options)) {
+		if (!filter_var($str, FILTER_VALIDATE_REGEXP, $options)) {
 			$this->setError($fieldName, $failMessage);
 			return;
 		}
@@ -91,12 +91,12 @@ abstract class ModelObject {
 
 	protected function validateNumber($fieldName, $isRequired = false, $min = null, $max = null) {
 		$number = $this->extractForm($this->formInput, $fieldName);
-		if ($isRequired && empty($number)) {
+		if ($isRequired && $number === "") {
 			$this->setError($fieldName, 'This field is required. Enter a valid number.');
 			return;
 		}
 
-		if (!empty($number) && !is_numeric($number)) {
+		if ($number !== "" && !is_numeric($number)) {
 			$this->setError($fieldName, 'This field expects numbers only. Enter a valid number.');
 			return;
 		}

@@ -1,7 +1,7 @@
 <?php
 class HeaderView {
 
-    public static function show($title = null) {
+    public static function show($title = null, $data = null) {
         $host_base = $_SERVER['HTTP_HOST'].'/'.$_SESSION['base'];
         if (isset($_SESSION['profile']) && $_SESSION['profile']->getTheme() == 'dark') {
             $bootstrap_css = '/css/bootstrap.dark.min.css';
@@ -34,6 +34,13 @@ class HeaderView {
     <link rel="stylesheet" href="//<?= $host_base . '/css/' . $style ?>" type="text/css" /><?php
             endforeach;
             unset($_SESSION['styles']);
+        endif;
+        if (!is_null($data)): ?>
+    <script type="text/javascript"><?php
+            foreach ($data as $varName => $datum): ?>
+                var <?=$varName?> = <?=$datum?>;<?php
+            endforeach; ?>
+    </script><?php
         endif; ?>
     <script src="https://code.jquery.com/jquery-3.3.1.js"
     	integrity="sha256-2Kok7MbOyxpgUVvAk/HJ2jigOSYS2auK4Pfzbm7uH60="
@@ -49,6 +56,12 @@ class HeaderView {
     <script src="//<?= $host_base . 'js/' . $script ?>"></script><?php
             endforeach;
             unset($_SESSION['scripts']);
+        endif;
+        if (isset($_SESSION['localScripts'])):
+            foreach ($_SESSION['localScripts'] as $script): ?>
+    <script src="/<?= 'node_modules/' . $script ?>"></script><?php
+            endforeach;
+            unset($_SESSION['localScripts']);
         endif;
         if (isset($_SESSION['libraries'])):
             foreach ($_SESSION['libraries'] as $library): ?>

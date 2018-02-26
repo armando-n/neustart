@@ -83,7 +83,8 @@ class WeeklyTimeBlocksDB {
 			$stmt = $db->prepare(
 				'select *
 				from WeeklyContactProfiles_TimeBlocks join WeeklyContactProfiles using (profileID)
-				where profileID = :profileID'
+				where profileID = :profileID
+				order by dayOfWeek, startHour, startMinute'
 			);
 			$stmt->execute(array(':profileID' => $profileID));
 
@@ -102,6 +103,39 @@ class WeeklyTimeBlocksDB {
 		}
 
 		return $allWeeklyTimeBlocks;
+	}
+
+	/** Returns an array of WeeklyTimeBlock objects for the active profile of the specified user. */
+	public static function getAllActiveByUser($userID): ?array {
+		$allActiveWeeklyBlocks = array();
+
+		try {
+			$db = Database::getDB();
+			$stmt = $db->prepare(
+				'select *
+				from Users join (
+					WeeklyContactProfiles join WeeklyContactProfiles_TimeBlocks using (profileID)
+				) using (userID)
+				where userID = :userID and isProfileActive = true
+				order by dayOfWeek, startHour, startMinute'
+			);
+			$stmt->execute(array(':userID' => $userID));
+
+			$rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+			foreach ($rows as $row) {
+				$timeBlock = new WeeklyTimeBlock($row);
+				if (!is_object($timeBlock) || !empty($timeBlock->getErrors()))
+					throw new PDOException('Failed to create valid weekly time block');
+				$allActiveWeeklyBlocks[] = $timeBlock;
+			}
+
+		} catch (PDOException $e) {
+			echo $e->getMessage();
+		} catch (RuntimeException $e) {
+			echo $e->getMessage();
+		}
+		
+		return $allActiveWeeklyBlocks;
 	}
 
 	/** Retrieves the weekly time block from the database with the given blockID. */
