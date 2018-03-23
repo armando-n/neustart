@@ -2,6 +2,7 @@
 
 ### Misc ###
 phpinfo.php
+dist/
 
 ### NPM ###
 node_modules/
