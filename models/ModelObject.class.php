@@ -72,6 +72,8 @@ abstract class ModelObject {
 			$this->setError($fieldName, $failMessage);
 			return;
 		}
+
+		return $str;
 	}
 
 	protected function validateEnum($fieldName, array $allowedValues, $isRequired = false) {
