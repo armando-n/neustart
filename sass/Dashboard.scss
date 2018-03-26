@@ -1,3 +1,18 @@
+$highlight-color: #2371ee;
+$highlight-border-color: #438bff;
+
+/* Misc Utility Styles */
+.noselect {
+	-webkit-touch-callout: none; /* iOS Safari */
+	  -webkit-user-select: none; /* Safari */
+		-khtml-user-select: none; /* Konqueror HTML */
+		  -moz-user-select: none; /* Firefox */
+			-ms-user-select: none; /* Internet Explorer/Edge */
+				 user-select: none; /* Non-prefixed version, currently
+											  supported by Chrome and Opera */
+ }
+
+/* SVG Styles */
 #svg {
 	width: 100%;
 	height: 100%;
@@ -12,12 +27,12 @@
 		stroke-width: 1;
 	}
 
-	text.day {
+	text.day-title {
 		font-weight: bold;
 		text-transform: capitalize;
 	}
 
-	.time-block {
+	rect.time-block {
 		stroke-width: 1;
 		opacity: 0.5;
 
@@ -25,20 +40,231 @@
 			stroke: #2e6e2e;
 			fill: #57aa57;
 		}
+		&.text-and-call:hover { fill: #57e057 }
 
 		&.text-only {
 			stroke: #0c4eb7;
 			fill: #4286f4;
 		}
+		&.text-only:hover { fill: #6fa6ff }
 
 		&.call-only {
 			stroke: #979724;
 			fill: #cfcf6f;
 		}
+		&.call-only:hover { fill: #ffffb3 }
 
 		&.no-text-or-call {
 			stroke: #862141;
 			fill: #ba5776;
+		}
+		&.no-text-or-call:hover { fill: #f185a8 }
+	}
+}
+
+/* Time Block Details Modal Styles */
+
+div.block-detail-modal {
+	display: none;
+	position: fixed;
+	background: white;
+	z-index: 100;
+	border: 1px black solid;
+	border-radius: 6px;
+	box-shadow: 0px 0px 20px -1px #777777;
+	padding: 0.1rem;
+}
+
+.close-button {
+	font-family: "Lucida Console", Monaco, monospace;
+	font-weight: bold;
+	font-size: 1.1rem;
+	margin-top: 0.25rem;
+	margin-right: 0.5rem;
+	color: #5e5e5e;
+	cursor: pointer;
+	float: right;
+	&:hover {
+		color: $highlight-color;
+	}
+}
+
+.modal-title {
+	font-size: 1.35rem;
+	color: #6b6b6b;
+	text-align: center;
+	padding-top: 0.2rem;
+	padding-bottom: 0.2rem;
+	margin-left: 0.5rem;
+	margin-right: 1.5rem;
+	white-space: nowrap;
+}
+
+fieldset {
+	border-left: none;
+	border-right: none;
+	border-top: none;
+	border-bottom: 1px solid #b6b6b6;
+
+	&:first-of-type {
+		border-top: 1px solid #b6b6b6;
+		.input-group:first-of-type {
+			position: relative;
+			top: -0.25rem;
+		}
+	}
+
+	&:last-of-type {
+		border-bottom: none;
+	}
+
+	legend {
+		position: relative;
+		top: 7px;
+		left: 0;
+	}
+}
+
+.toggle-button {
+	@extend .noselect;
+	display: inline-block;
+	border: 1px black solid;
+	border-radius: 6px;
+	padding: 0.15rem 0.25rem;
+	margin-top: 0.1rem;
+	margin-bottom: 0.1rem;
+	cursor: pointer;
+	&.pressed {
+		background: $highlight-color;
+		border-color: $highlight-border-color;
+		color: white;
+	}
+	&#texts-button, &#calls-button {
+		width: 95%;
+		text-align: center;
+	}
+}
+
+#texts-repeat-button, #calls-repeat-button {
+	display: none;
+	margin-top: 0.4rem;
+	margin-right: 0.2rem;
+
+	&.active {
+		display: inline-block;
+	}
+}
+
+#texts-repeat-duration-group, #calls-repeat-duration-group {
+	display: none;
+	margin-right: -3.5rem;
+
+	&.responsive-invis {
+		display: inline-block;
+		visibility: hidden;
+	}
+
+	&.active {
+		display: inline-block;
+	}
+}
+
+.time-label {
+	display: block;
+	margin-bottom: 0.15rem;
+}
+
+.time-colon {
+	font-weight: bold;
+}
+
+.input-group {
+	margin-top: 0.5rem;
+	margin-bottom: 0.5rem;
+
+	&:last-of-type {
+		margin-bottom: 0.25rem;
+	}
+}
+
+input.number {
+	display: inline-block;
+	max-width: 2.5ch;
+	text-align: center;
+	padding: 0.2rem;
+}
+
+input:disabled {
+	color: lightgray;
+}
+
+select {
+	padding: 0.24rem 0.1rem;
+	margin-left: 0.25rem;
+}
+
+#modal-buttons {
+	float: right;
+	margin-top: 0.25rem;
+}
+
+/* Responsive Styles */
+
+@media screen and (min-width: 576px) {
+
+	.modal-title {
+		margin-right: 0.5rem;
+	}
+
+	.time-label {
+		display: inline-block;
+		margin-right: 0.5rem;
+		min-width: 4ch;
+	}
+
+	.toggle-button {
+		width: initial;
+	}
+
+	#texts-repeat-button, #calls-repeat-button {
+		display: inline-block;
+		color: lightgray;
+		border-color: lightgray;
+		pointer-events: none;
+		cursor: default;
+		&.active {
+			color: black;
+			border-color: black;
+			pointer-events: auto;
+			cursor: pointer;
+			&.pressed {
+				color: white;
+				border-color: $highlight-border-color;
+			}
+		}
+	}
+
+	#texts-repeat-duration-group, #calls-repeat-duration-group {
+		display: inline;
+		color: lightgray;
+		border-color: lightgray;
+		pointer-events: none;
+		cursor: default;
+
+		&.responsive-invis {
+			visibility: visible;
+		}
+
+		&.active {
+			color: black;
+			border-color: black;
+			pointer-events: auto;
+			cursor: initial;
+
+			.toggle-button.pressed {
+				color: white;
+				border-color: $highlight-border-color;
+			}
 		}
 	}
 }
