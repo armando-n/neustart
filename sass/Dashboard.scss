@@ -170,8 +170,9 @@ fieldset {
 }
 
 .time-label {
-	display: block;
-	margin-bottom: 0.15rem;
+	display: inline-block;
+	margin-right: 0.5rem;
+	min-width: 4ch;
 }
 
 .time-colon {
@@ -189,9 +190,18 @@ fieldset {
 
 input.number {
 	display: inline-block;
-	max-width: 2.5ch;
+	max-width: 4ch;
 	text-align: center;
 	padding: 0.2rem;
+}
+
+input[type=time] {
+	padding: 0.2rem;
+	font-size: 0.85rem;
+}
+
+textarea {
+	font-size: 0.85rem;
 }
 
 input:disabled {
@@ -216,14 +226,16 @@ select {
 		margin-right: 0.5rem;
 	}
 
-	.time-label {
-		display: inline-block;
-		margin-right: 0.5rem;
-		min-width: 4ch;
-	}
-
 	.toggle-button {
 		width: initial;
+	}
+
+	input[type=time] {
+		font-size: 1rem;
+	}
+
+	textarea {
+		font-size: 1.1rem;
 	}
 
 	#texts-repeat-button, #calls-repeat-button {
@@ -245,7 +257,7 @@ select {
 	}
 
 	#texts-repeat-duration-group, #calls-repeat-duration-group {
-		display: inline;
+		display: inline-block;
 		color: lightgray;
 		border-color: lightgray;
 		pointer-events: none;

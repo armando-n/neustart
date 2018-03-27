@@ -13,10 +13,13 @@ function init() {
 	document.getElementById('calls-button').onclick = callsToggled;
 	document.getElementById('calls-repeat-button').onclick = callsRepeatToggled;
 	document.getElementById('close-modal').onclick = closeModal;
-	d3.select('#modal-buttons > input[type="button"]').node().onclick = closeModal;
-	d3.select('#modal-buttons > input[type="submit"]').node().onclick = editTimeBlock;
+	document.querySelector('#modal-buttons > input[type="button"]').onclick = closeModal;
+	document.querySelector('#modal-buttons > input[type="submit"]').onclick = editTimeBlock;
+	document.querySelectorAll('input[type="number"]').forEach(input =>
+		input.onfocus = (event) => event.target.select()
+	);
 	if (window.innerWidth < 576)
-		d3.select('#comment').attr('cols', '18');
+		document.getElementById('comment').cols = 18;
 }
 
 function createSVG(error, response) {
@@ -116,17 +119,11 @@ function showBlockDetail(block) {
 	callsToggled.call(document.getElementById('calls-button'), undefined, false);
 
 	// fill input fields with time block data
-	const [startHour12, startMeridiem] = to12Hours(block.startHour);
-	const [endHour12, endMeridiem] = to12Hours(block.endHour);
-	d3.select('#startHour').property('value', zPad(startHour12));
-	d3.select('#startMinute').property('value', zPad(block.startMinute));
-	d3.select('#startMeridiem').property('value', startMeridiem)
-	d3.select('#endHour').property('value', zPad(endHour12));
-	d3.select('#endMinute').property('value', zPad(block.endMinute));
-	d3.select('#endMeridiem').property('value', endMeridiem)
-	d3.select('#textRepeatDuration').property('value', block.repeatTextDuration);
-	d3.select('#callRepeatDuration').property('value', block.repeatCallDuration);
-	d3.select('#comment').property('value', block.comment);
+	document.getElementById('startTime').value = zPad(block.startHour)+':'+zPad(block.startMinute);
+	document.getElementById('endTime').value = zPad(block.endHour)+':'+zPad(block.endMinute);
+	document.getElementById('textRepeatDuration').value = block.repeatTextDuration;
+	document.getElementById('callRepeatDuration').value = block.repeatCallDuration;
+	document.getElementById('comment').value = block.comment;
 
 	// set texts button states
 	if (block.isReceivingTexts) {
@@ -155,8 +152,23 @@ function showBlockDetail(block) {
 }
 
 function editTimeBlock(event) {
-	// TODO: implement this
 	event.preventDefault();
+
+	// check form input validty
+
+	// if invalid, display errors and finish
+
+	// process input
+
+	// create new time block
+
+	// adjust other time blocks affected by new block
+
+	// send modified time block data to server to be stored
+
+	// close modal dialog
+
+	// update weekly schedule svg
 }
 
 function timeBlockColorClass(timeBlock) {
