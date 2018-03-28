@@ -1,6 +1,6 @@
 import 'babel-polyfill';
 import { zPad } from './utils.es6.js';
-import * as timeBlockService from './TimeBlockService.es6.js';
+import * as timeBlockService from './timeblock-service.es6.js';
 
 window.addEventListener('load', init);
 

@@ -1,6 +1,6 @@
 import 'babel-polyfill';
-import WeeklySchedule from './TimeBlockModel.es6.js';
-import * as editModal from './EditTimeBlockModal.es6.js';
+import WeeklySchedule from './weekly-schedule-model.es6.js';
+import * as editModal from './edit-timeblock-modal.es6.js';
 
 var moment = require('moment');
 

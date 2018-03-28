@@ -1,5 +1,5 @@
 import 'babel-polyfill';
-import * as svgService from './DashboardSvgService.es6.js';
+import * as svgService from './dashboard-svg-service.es6.js';
 
 window.addEventListener('load', init);
 

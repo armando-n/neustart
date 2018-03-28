@@ -3,7 +3,7 @@
 class VerificationView {
 
 	public static function show() {
-		$_SESSION['scripts'][] = 'Verification.js';
+		$_SESSION['scripts'][] = 'verification.js';
 		HeaderView::show();
 		self::showBody();
 	}

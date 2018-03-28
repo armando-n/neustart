@@ -14,7 +14,7 @@ class DashboardView {
 	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
 	<title>Neustart | Dashboard</title>
 	<script src="https://d3js.org/d3.v4.min.js"></script>
-	<link rel="stylesheet" href="/css/Dashboard.css" type="text/css" />
+	<link rel="stylesheet" href="/css/dashboard.css" type="text/css" />
 </head>
 <body>
 
@@ -64,7 +64,7 @@ class DashboardView {
 		</form>
 	</div>
 
-	<script src="/dist/js/Dashboard.js"></script>
+	<script src="/dist/js/dashboard.js"></script>
 </body>
 </html>
 <?php

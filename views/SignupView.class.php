@@ -2,7 +2,7 @@
 class SignupView {
 
 	public static function show() {
-		$_SESSION['scripts'][] = 'Signup.js';
+		$_SESSION['scripts'][] = 'signup.js';
 		HeaderView::show();
 		SignupView::showBody();
 	}

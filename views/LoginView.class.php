@@ -2,8 +2,8 @@
 class LoginView {
 
 	public static function show() {
-		$_SESSION['styles'][] = 'Login.css';
-		$_SESSION['scripts'][] = 'Login.js';
+		$_SESSION['styles'][] = 'login.css';
+		$_SESSION['scripts'][] = 'login.js';
 		HeaderView::show();
 		LoginView::showBody();
 	}
