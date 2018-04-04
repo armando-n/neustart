@@ -1,10 +1,14 @@
 import 'babel-polyfill';
-import WeeklySchedule from './weekly-schedule-model.es6.js';
 import * as editModal from './edit-timeblock-modal.es6.js';
+import { WeeklySchedule } from './weekly-schedule-model.es6.js';
 
 var moment = require('moment');
 
-export function createSVG(error, response) {
+export function createSvg(weeklySchedule) {
+
+	if (!(weeklySchedule instanceof WeeklySchedule))
+		throw new Error('Invalid argument in SvgService.createSvg');
+
 	const svg = d3.select('#svg');
 	const clientWidth = window.innerWidth;
 	const clientHeight = window.innerHeight;
@@ -18,8 +22,6 @@ export function createSVG(error, response) {
 	const graphWidth = svgWidth - marginLeft;
 	const graphHeight = dayHeight;
 
-	const nestedData = new WeeklySchedule(response.data);
-
 	// svg element w/background
 	svg.attr('width', svgWidth).attr('height', svgHeight);
 	svg.append('rect')
@@ -31,7 +33,7 @@ export function createSVG(error, response) {
 
 	// create an svg group for each day column (including title)
 	const dayG = svg.selectAll('g.day')
-			.data(nestedData)
+			.data(weeklySchedule.daysWithTimeBlocks)
 			.enter()
 		.append('g')
 			.attr('class', 'day')
