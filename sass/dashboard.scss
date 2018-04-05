@@ -17,6 +17,7 @@ $highlight-border-color: #438bff;
  }
 
 /* SVG Styles */
+
 #svg {
 	width: 100%;
 	height: 100%;
@@ -39,6 +40,7 @@ $highlight-border-color: #438bff;
 	rect.time-block {
 		stroke-width: 1;
 		opacity: 0.5;
+		cursor: pointer;
 
 		&.text-and-call {
 			stroke: #2e6e2e;
@@ -61,6 +63,7 @@ $highlight-border-color: #438bff;
 		&.no-text-or-call {
 			stroke: #862141;
 			fill: #ba5776;
+			cursor: default;
 		}
 		&.no-text-or-call:hover { fill: #f185a8 }
 	}
@@ -68,11 +71,12 @@ $highlight-border-color: #438bff;
 
 /* Time Block Details Modal Styles */
 
-div.block-detail-modal {
+#block-detail-modal {
 	display: none;
 	position: fixed;
 	background: white;
 	z-index: 100;
+	opacity: 0.0;
 	border: 1px black solid;
 	border-radius: 6px;
 	box-shadow: 0px 0px 20px -1px #777777;

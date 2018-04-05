@@ -5,7 +5,7 @@ import * as timeBlockService from './timeblock-service.es6.js';
 window.addEventListener('load', init);
 
 function init() {
-	// time block details modal event handlers
+	// bind event handlers
 	document.getElementById('texts-button').onclick = textsToggled;
 	document.getElementById('texts-repeat-button').onclick = textsRepeatToggled;
 	document.getElementById('calls-button').onclick = callsToggled;
@@ -23,6 +23,7 @@ function init() {
 
 /** Loads and displays the time block parameter's data in a modal dialog */
 export function show(block) {
+
 	// reset button states
 	textsToggled.call(document.getElementById('texts-button'), undefined, false);
 	callsToggled.call(document.getElementById('calls-button'), undefined, false);
@@ -34,14 +35,14 @@ export function show(block) {
 	document.getElementById('callRepeatDuration').value = block.repeatCallDuration;
 	document.getElementById('comment').value = block.comment;
 
-	// set texts button states
+	// set 'texts' button states
 	if (block.isReceivingTexts) {
 		document.getElementById('texts-button').click();
 		if (block.isTextRepeating)
 			document.getElementById('texts-repeat-button').click();
 	}
 
-	// set calls button states
+	// set 'calls' button states
 	if (block.isReceivingCalls) {
 		document.getElementById('calls-button').click();
 		if (block.isCallRepeating)
@@ -49,16 +50,34 @@ export function show(block) {
 	}
 
 	// center and display the modal dialog
-	const modal = d3.select('.block-detail-modal').style('display', 'inline');
-	setTimeout(() => {
-		const modalDomRect = modal.node().getBoundingClientRect();
-		const modalTop = window.innerHeight > modalDomRect.height ? (window.innerHeight/2 - modalDomRect.height/2) : 0;
-		const modalLeft = window.innerWidth/2 - modalDomRect.width/2;
-		modal
-			.style('left', `${modalLeft}px`)
-			.style('top', `${modalTop}px`);
-	}, 0);
+	if (!isModalOpen()) {
+		const modal = d3.select(getModal())
+			.style('opacity', 0.0)
+			.style('display', 'inline-block');
+		setTimeout(() => {
+			const modalDomRect = modal.node().getBoundingClientRect();
+			const modalTop = window.innerHeight > modalDomRect.height ? (window.innerHeight/2 - modalDomRect.height/2) : 0;
+			const modalLeft = window.innerWidth/2 - modalDomRect.width/2;
+			modal
+				.style('left', `${modalLeft}px`)
+				.style('top', `${modalTop}px`)
+				.transition()
+				.delay(200)
+				.duration(250)
+				.style('opacity', 1.0);
+		}, 0);
+	}
 }
+
+function isModalOpen() {
+	return window.getComputedStyle(getModal()).getPropertyValue('display')  !== 'none';
+}
+
+function getModal() {
+	return document.getElementById('block-detail-modal');
+}
+
+// --------------------------- Event Handlers --------------------------- \\
 
 function textsToggled(event, isButtonPressed = !d3.select(this).classed('pressed')) {
 	// highlight texts button
@@ -109,5 +128,5 @@ function callsRepeatToggled(event, isButtonPressed = !d3.select(this).classed('p
 }
 
 function closeModal() {
-	d3.select('.block-detail-modal').style('display', 'none');
+	getModal().style.display = 'none';
 }

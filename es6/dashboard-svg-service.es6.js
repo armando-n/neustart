@@ -2,8 +2,6 @@ import 'babel-polyfill';
 import * as editModal from './edit-timeblock-modal.es6.js';
 import { WeeklySchedule } from './weekly-schedule-model.es6.js';
 
-var moment = require('moment');
-
 export function createSvg(weeklySchedule) {
 
 	if (!(weeklySchedule instanceof WeeklySchedule))
@@ -51,6 +49,7 @@ export function createSvg(weeklySchedule) {
 	const daySquareG = dayG.append('g')
 		.attr('transform', 'translate(0, 30)');
 
+	// draw each day of the week
 	daySquareG.each(function(g, dayIndex) {
 		// y-scale for the current day
 		let domainStart = moment().day(dayIndex).startOf('day').toDate();

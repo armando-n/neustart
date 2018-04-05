@@ -14,6 +14,7 @@ class DashboardView {
 	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
 	<title>Neustart | Dashboard</title>
 	<script src="https://d3js.org/d3.v4.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.22.0/moment.min.js"></script>
 	<link rel="stylesheet" href="/css/dashboard.css" type="text/css" />
 </head>
 <body>
@@ -22,7 +23,7 @@ class DashboardView {
 		<svg id="svg"></svg>
 	</div>
 
-	<div class="block-detail-modal">
+	<div id="block-detail-modal">
 		<span id="close-modal" class="close-button">x</span>
 		<div class="modal-title">
 			Edit Time Block
