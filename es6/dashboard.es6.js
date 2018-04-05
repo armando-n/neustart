@@ -1,6 +1,7 @@
 import 'babel-polyfill';
 import WeeklySchedule from './weekly-schedule-model.es6.js';
 import * as svgService from './dashboard-svg-service.es6.js';
+import './toolbar.es6.js';
 
 window.addEventListener('load', init);
 

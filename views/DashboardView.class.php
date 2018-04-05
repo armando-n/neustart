@@ -19,8 +19,20 @@ class DashboardView {
 </head>
 <body>
 
-	<div class="svg-wrapper">
-		<svg id="svg"></svg>
+	<div id="top-section">
+		<div id="toolbar">
+			<div id="toolbar-buttons">
+				<button id="toolbar-fill" class="toggle-button" type="button">Fill</button>
+				<button id="toolbar-copy" class="toggle-button" type="button">Copy</button>
+				<button id="toolbar-delete" class="toggle-button" type="button">Delete</button>
+				<button id="toolbar-split" class="toggle-button" type="button">Split</button>
+				<button id="toolbar-add" class="toggle-button" type="button">Add</button>
+			</div>
+		</div>
+
+		<div class="svg-wrapper">
+			<svg id="svg"></svg>
+		</div>
 	</div>
 
 	<div id="block-detail-modal">
