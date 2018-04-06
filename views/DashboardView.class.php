@@ -77,6 +77,14 @@ class DashboardView {
 		</form>
 	</div>
 
+	<div id="confirm-modal" class="modal">
+		<div class="modal-message">You sure?</div>
+		<div id="confirm-buttons" style="float: right">
+			<button id="yes" type="button">Yeah</button>
+			<button id="no" type="button">Nah</button>
+		</div>
+	</div>
+
 	<script src="/dist/js/dashboard.js"></script>
 </body>
 </html>

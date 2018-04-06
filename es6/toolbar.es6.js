@@ -10,13 +10,19 @@ function init() {
 	document.getElementById('toolbar-delete').addEventListener('click', deleteClicked);
 	document.getElementById('toolbar-split').addEventListener('click', splitClicked);
 	document.getElementById('toolbar-add').addEventListener('click', addClicked);
-	Array.from(document.getElementsByTagName('button'))
+	Array.from(document.querySelectorAll('#toolbar-buttons button'))
 		.forEach(button =>
 			button.addEventListener('click', toggleButton)
 		);
 }
 
+export function clearButtons() {
+	Array.from(document.querySelectorAll('#toolbar-buttons button'))
+		.forEach(button => button.classList.remove('pressed'));
+}
+
 function toggleButton() {
+	console.log('toolbar togglebutton');
 	// deselect other toolbar buttons
 	Array.from(document.querySelectorAll('#toolbar-buttons > button')).forEach(button => {
 		if (button !== this)

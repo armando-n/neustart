@@ -1,6 +1,8 @@
 import 'babel-polyfill';
 import * as editModal from './edit-timeblock-modal.es6.js';
 import * as timeBlockService from './timeblock-service.es6.js';
+import * as confirmModal from './confirm-modal.es6.js';
+import * as toolbar from './toolbar.es6.js';
 import { WeeklySchedule } from './weekly-schedule-model.es6.js';
 import { toNum } from './utils.es6.js';
 
@@ -150,8 +152,12 @@ function timeBlockColorClass(timeBlock) {
 function timeBlockClicked(timeBlock) {
 	switch (mode) {
 		case 'delete':
-			const newSchedule = timeBlockService.remove(timeBlock);
-			setWeeklyData(newSchedule);
+			confirmModal.show(() => {
+				const newSchedule = timeBlockService.remove(timeBlock);
+				setWeeklyData(newSchedule);
+				setDeleteMode(false);
+				toolbar.clearButtons();
+			});
 			break;
 		default: editModal.show(timeBlock);
 	}

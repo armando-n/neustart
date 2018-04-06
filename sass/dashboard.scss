@@ -104,9 +104,21 @@ $toolbar-text-color: #226de7;
 	}
 }
 
+/* Confirm modal styles */
+
+#confirm-modal {
+	padding: 1rem;
+	.modal-message {
+		margin-bottom: 0.25rem;
+	}
+	button {
+		margin-top: 1rem;
+	}
+}
+
 /* Time Block Details Modal Styles */
 
-#block-detail-modal {
+#block-detail-modal, div.modal {
 	display: none;
 	position: fixed;
 	background: white;
