@@ -77,18 +77,21 @@ $toolbar-text-color: #226de7;
 		&.text-and-call {
 			stroke: #2e6e2e;
 			fill: #57aa57;
+			&.delete-mode:hover { fill: #f185a8 }
 		}
 		&.text-and-call:hover { fill: #57e057 }
 
 		&.text-only {
 			stroke: #0c4eb7;
 			fill: #4286f4;
+			&.delete-mode:hover { fill: #f185a8 }
 		}
 		&.text-only:hover { fill: #6fa6ff }
 
 		&.call-only {
 			stroke: #979724;
 			fill: #cfcf6f;
+			&.delete-mode:hover { fill: #f185a8 }
 		}
 		&.call-only:hover { fill: #ffffb3 }
 

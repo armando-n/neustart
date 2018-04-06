@@ -35,7 +35,8 @@ function copyClicked() {
 }
 
 function deleteClicked() {
-	console.log('delete clicked');
+	const enableDelete = !this.classList.contains('pressed');
+	svgService.setDeleteMode(enableDelete);
 }
 
 function splitClicked() {
