@@ -3,14 +3,19 @@ import 'babel-polyfill';
 window.addEventListener('load', init);
 
 let confirmedAction;
+let deniedAction;
 
 function init() {
 	document.getElementById('yes').onclick = yesClicked;
-	document.getElementById('no').onclick = close;
+	document.getElementById('no').onclick = noClicked;
 }
 
-export function show(actionOnConfirm) {
+export function show(actionOnConfirm = ()=>{}, actionOnDeny = ()=>{}) {
+if (typeof actionOnConfirm !== 'function' || typeof actionOnDeny !== 'function')
+	throw new Error('Invalid arguments passed to ConfirmModal.show');
+
 	confirmedAction = actionOnConfirm;
+	deniedAction = actionOnDeny;
 
 	const modal = getModal();
 	modal.style.opacity = '0.0';
@@ -30,6 +35,11 @@ export function show(actionOnConfirm) {
 function yesClicked() {
 	close();
 	confirmedAction();
+}
+
+function noClicked() {
+	close();
+	deniedAction();
 }
 
 function close() {

@@ -152,12 +152,18 @@ function timeBlockColorClass(timeBlock) {
 function timeBlockClicked(timeBlock) {
 	switch (mode) {
 		case 'delete':
-			confirmModal.show(() => {
+			const deleteBlock = () => {
 				const newSchedule = timeBlockService.remove(timeBlock);
 				setWeeklyData(newSchedule);
 				setDeleteMode(false);
 				toolbar.clearButtons();
-			});
+			};
+			const cancelDelete = () => {
+				setDeleteMode(false);
+				toolbar.clearButtons();
+			}
+
+			confirmModal.show(deleteBlock, cancelDelete);
 			break;
 		default: editModal.show(timeBlock);
 	}
