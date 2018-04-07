@@ -3,10 +3,11 @@ import 'babel-polyfill';
 export class WeeklySchedule {
 
 	constructor(rawTimeBlocks) {
+		let daysWithTimeBlocks;
 
 		// allow WeeklySchedule object as argument
 		if (rawTimeBlocks instanceof WeeklySchedule) {
-			this.daysWithTimeBlocks = rawTimeBlocks.daysWithTimeBlocks;
+			daysWithTimeBlocks = rawTimeBlocks.daysWithTimeBlocks;
 		}
 
 		// argument should be an array of either raw time block records or nested records grouped by day
@@ -17,14 +18,14 @@ export class WeeklySchedule {
 				rawTimeBlocks.forEach(day =>
 					day.values.forEach(validateBlock)
 				);
-				this.daysWithTimeBlocks = rawTimeBlocks;
+				daysWithTimeBlocks = rawTimeBlocks;
 			}
 
 			else {
 				rawTimeBlocks.forEach(validateBlock);
 
 				// group time blocks by day of week
-				this.daysWithTimeBlocks = d3.nest().key(rawBlock => rawBlock.dayOfWeek).entries(rawTimeBlocks);
+				daysWithTimeBlocks = d3.nest().key(rawBlock => rawBlock.dayOfWeek).entries(rawTimeBlocks);
 			}
 
 		}
@@ -32,6 +33,20 @@ export class WeeklySchedule {
 		else {
 			throw new Error('Invalid argument in WeeklySchedule constructor');
 		}
+
+		// fill in any missing day objects
+		const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+		const allDays = [];
+		for (let dayIndex = 0, dataIndex = 0; dayIndex < days.length; dayIndex++, dataIndex++) {
+			if (daysWithTimeBlocks[dataIndex] && daysWithTimeBlocks[dataIndex].key === days[dayIndex]) {
+				allDays.push(daysWithTimeBlocks[dataIndex]);
+			}
+			else {
+				allDays.push({ key: days[dayIndex], values: [] });
+				dataIndex--;
+			}
+		}
+		this.daysWithTimeBlocks = allDays;
 	}
 
 	removeBlock(blockID) {
