@@ -1,4 +1,5 @@
 import 'babel-polyfill';
+import ajaxService from './ajax-service.es6.js';
 import { WeeklySchedule } from './weekly-schedule-model.es6.js';
 
 let activeWeeklySchedule;
@@ -37,6 +38,13 @@ export function edit(event) {
 }
 
 export function remove(timeBlock) {
+	// send delete request to server
+	ajaxService.remove(`/weeklytimeblocks/${timeBlock.blockID}`)
+		.catch(error => console.log(error));
+
+	// delete time block from memory
 	getActiveWeeklySchedule().removeBlock(timeBlock.blockID);
+
+	// return modified weekly schedule
 	return getActiveWeeklySchedule();
 }
