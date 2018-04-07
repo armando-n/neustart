@@ -9,34 +9,62 @@ import { toNum } from './utils.es6.js';
 let mode = '';
 
 export function createSvg(weeklySchedule) {
-	const svg = d3.select('#svg');
 	const dimensions = getDimensions();
 
 	// save a reference to schedule
 	timeBlockService.setActiveWeeklySchedule(weeklySchedule);
 
-	// svg element w/background
-	svg.attr('width', dimensions.svgWidth).attr('height', dimensions.svgHeight);
-	svg.append('rect')
+	const svg = d3.select('#svg')
+		.attr('width', dimensions.svgWidth)
+		.attr('height', dimensions.svgHeight);
+
+	// svg group representing the main drawing area
+	const canvas = svg.append('g')
+		.attr('class', 'canvas')
+		.attr('transform', `translate(${dimensions.marginLeft}, 0)`);
+
+	// scale for axes
+	const domainStart = moment().startOf('day').toDate();
+	const domainEnd = moment().endOf('day').add(1, 'minutes').toDate();
+	const scale = d3.scaleTime()
+		.domain([domainStart, domainEnd])
+		.range([0, dimensions.dayHeight]);
+
+	// left axis
+	const leftAxis = d3.axisLeft(scale).ticks(5, "%I %p");
+	svg.append('g')
+		.attr('class', 'axis')
+		.attr('transform', `translate(${dimensions.marginLeft}, ${dimensions.marginTop-0.5})`)
+		.call(leftAxis);
+
+	// right axis
+	const rightAxis = d3.axisRight(scale).ticks(5, "%I %p");
+	svg.append('g')
+		.attr('class', 'axis')
+		.attr('transform', `translate(${dimensions.svgWidth - dimensions.marginRight}, ${dimensions.marginTop-0.5})`)
+		.call(rightAxis);
+
+	// background rect for empty spaces
+	canvas.append('rect')
 		.attr('class', 'background')
 		.attr('x', 0)
-		.attr('y', 30)
-		.attr('width', dimensions.svgWidth)
+		.attr('y', dimensions.marginTop)
+		.attr('width', dimensions.canvasWidth)
 		.attr('height', dimensions.dayHeight);
 
 	// bind data and draw day squares and time blocks for each day of the week
 	setWeeklyData(weeklySchedule);
 
 	// create titles for each day
-	svg.selectAll('g.day').append('text')
+	canvas.selectAll('g.day').append('text')
 		.attr('class', 'day-title')
 		.attr('x', dimensions.dayWidth / 2)
 		.attr('y', 20)
 		.attr('text-anchor', 'middle')
 		.text(day => day.key);
 
-	// create each day square border
-	svg.selectAll('g.day-square').append('rect')
+	// create border for each day square
+	canvas.selectAll('g.day-square').append('rect')
 		.attr('class', 'day')
 		.attr('x', 0)
 		.attr('y', 0)
@@ -56,7 +84,7 @@ function setWeeklyData(weeklySchedule) {  //dayIndex, dayHeight, dayWidth) {
 
 	// bind day data and create a svg groups for each day column and day square
 	const dimensions = getDimensions();
-	d3.select('#svg')
+	d3.select('.canvas')
 			.selectAll('g.day')
 			.data(weeklySchedule.daysWithTimeBlocks)
 			.enter()
@@ -65,7 +93,7 @@ function setWeeklyData(weeklySchedule) {  //dayIndex, dayHeight, dayWidth) {
 			.attr('transform', (day, index) => `translate(${index*dimensions.dayWidth}, 0)`)
 		.append('g')
 			.attr('class', 'day-square')
-			.attr('transform', 'translate(0, 30)');
+			.attr('transform', `translate(0, ${dimensions.marginTop})`);
 
 	// draw time blocks for each day
 	d3.selectAll('g.day-square').each(function(day, dayIndex) {
@@ -113,29 +141,35 @@ function setWeeklyData(weeklySchedule) {  //dayIndex, dayHeight, dayWidth) {
 
 function getDimensions() {
 	const colPadding = 15;
-	const marginTop = 39;
-	const marginLeft = 30;
+	const marginTop = 30;
+	const marginLeft = 45;
+	const marginRight= 45;
+	const marginBottom = 30;
+
 	const clientWidth = window.innerWidth;
-	const clientHeight = window.innerHeight;
 	const svgWidth = clientWidth - colPadding*2;
-	const dayWidth = svgWidth / 7;
-	const svgHeight = dayWidth + marginTop;
+	const canvasWidth = svgWidth - marginLeft - marginRight;
+	const dayWidth = canvasWidth / 7;
+
+	const clientHeight = window.innerHeight;
 	const dayHeight = dayWidth;
-	const graphWidth = svgWidth - marginLeft;
-	const graphHeight = dayHeight;
+	const svgHeight = dayHeight + marginTop + marginBottom;
+	const canvasHeight = svgHeight - marginBottom;
 
 	return {
 		colPadding,
 		marginTop,
 		marginLeft,
+		marginRight,
+		marginBottom,
 		clientWidth,
 		clientHeight,
 		svgWidth,
+		canvasWidth,
 		dayWidth,
 		svgHeight,
+		canvasHeight,
 		dayHeight,
-		graphWidth,
-		graphHeight,
 	}
 }
 
