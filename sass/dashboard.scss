@@ -1,4 +1,4 @@
-$bg-color: #111111;
+$bg-color: #eeeeee;
 $highlight-color: #2371ee;
 $highlight-border-color: #438bff;
 $toolbar-border-color: #0c4eb7;
@@ -58,6 +58,19 @@ $toolbar-text-color: #226de7;
 		opacity: 0.15;
 	}
 
+	.tracking-empty {
+		line {
+			stroke: orange;
+			stroke-width: 2;
+		}
+		text {
+			fill: #f59f00;
+			font-weight: bold;
+			stroke: black;
+			stroke-width: 0.1;
+		}
+	}
+
 	rect.day {
 		fill: none;
 		stroke: #181818;
@@ -67,6 +80,7 @@ $toolbar-text-color: #226de7;
 	text.day-title {
 		font-weight: bold;
 		text-transform: capitalize;
+		fill: lightgray;
 	}
 
 	rect.time-block {

@@ -21,10 +21,12 @@ export const zPad = (num, size = 2, ignoreOverflow = false) => {
  * and the second array element is the meridiem (am or pm). */
 export const to12Hours = (hour24) => {
 	const numHour24 = toNum(hour24);
-	if (hour24 === 0)
+	if (numHour24 === 0 || numHour24 === 24)
 		return [12, 'am'];
-	else if (hour24 < 13)
+	else if (numHour24 < 12)
 		return [numHour24, 'am'];
+	else if (numHour24 === 12)
+		return [12, 'pm'];
 	else
 		return [numHour24 % 12, 'pm'];
 }

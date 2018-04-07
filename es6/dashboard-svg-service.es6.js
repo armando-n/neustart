@@ -4,7 +4,7 @@ import * as timeBlockService from './timeblock-service.es6.js';
 import * as confirmModal from './confirm-modal.es6.js';
 import * as toolbar from './toolbar.es6.js';
 import { WeeklySchedule } from './weekly-schedule-model.es6.js';
-import { toNum } from './utils.es6.js';
+import { toNum, to12Hours, zPad } from './utils.es6.js';
 
 let mode = '';
 
@@ -51,6 +51,56 @@ export function createSvg(weeklySchedule) {
 		.attr('y', dimensions.marginTop)
 		.attr('width', dimensions.canvasWidth)
 		.attr('height', dimensions.dayHeight);
+
+	// group to hold elements for empty space mouseover effects
+	const mouseTrackingG = canvas.append('g')
+		.attr('class', 'tracking-empty')
+		.attr('transform', `translate(0, ${dimensions.marginTop})`);
+
+	// horizontal mouseover line and text for empty spaces
+	const trackLine = mouseTrackingG.append('line')
+		.attr('x1', 0).attr('y1', 0)
+		.attr('x2', dimensions.canvasWidth).attr('y2', 0)
+		.attr('display', 'none');
+	const trackText = mouseTrackingG.append('text')
+		.attr('x', 0)
+		.attr('y', 0)
+		.attr('text-anchor', 'middle')
+		.attr('display', 'none');
+
+	// invisible surface to handle mouseover effects in empty spaces
+	mouseTrackingG.append('rect')
+		.attr('x', 0)
+		.attr('y', 0)
+		.attr('width', dimensions.canvasWidth)
+		.attr('height', dimensions.dayHeight)
+		.attr('fill-opacity', 0.0)
+		.attr('stroke-opacity', 0.0)
+		.on('mouseover', () => {
+			trackLine.attr('display', 'inline');
+			trackText.attr('display', 'inline');
+		})
+		.on('mousemove', function() {
+			// determine the coordinates and y-scale time-value of the mouse pointer location
+			const [mouseX, mouseY] = d3.mouse(this);
+			const mouseTime = moment(scale.invert(mouseY));
+			const [hours24, minutes] = [ mouseTime.hours(), mouseTime.minutes() ];
+			const [snapToHours24, snapToMinutes] = findClosest30Mins(hours24, minutes);
+			const [snapToHours12, meridiem] = to12Hours(snapToHours24);
+			const snapToTime = moment().hours(snapToHours24).minutes(snapToMinutes).toDate();
+			const snapToY = scale(snapToTime);
+			const textX = (snapToHours24 < 3) ? mouseX - 10 : mouseX;
+			const textY = (snapToHours24 < 3) ? snapToY + 20 : snapToY - 10;
+
+			// move line/text to mouse pointer and display corresponding time-value
+			trackLine.attr('y1', snapToY).attr('y2', snapToY);
+			trackText.attr('x', textX).attr('y', textY);
+			trackText.text(`${snapToHours12}:${zPad(snapToMinutes)} ${meridiem}`);
+		})
+		.on('mouseout', () => {
+			trackLine.attr('display', 'none');
+			trackText.attr('display', 'none');
+		});
 
 	// bind data and draw day squares and time blocks for each day of the week
 	setWeeklyData(weeklySchedule);
@@ -138,6 +188,18 @@ function setWeeklyData(weeklySchedule) {  //dayIndex, dayHeight, dayWidth) {
 				.remove();
 		});
 }
+
+function findClosest30Mins(hours24, minutes) {
+	let resultHours = hours24;
+	let resultMinutes = 0;
+
+	if (minutes >= 15 && minutes < 45)
+		resultMinutes = 30;
+	else if (minutes >= 45)
+		resultHours++;
+
+	return [resultHours, resultMinutes];
+};
 
 function getDimensions() {
 	const colPadding = 15;
