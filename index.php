@@ -27,7 +27,7 @@ function initSession() {
 		$_SESSION['styles'] = array();
 		$_SESSION['scripts'] = array();
 		$_SESSION['localScripts'] = array();
-		$_SESSION['libraries'] = array();
+		$_SESSION['remoteLibraries'] = array();
 		$_SESSION['dbName'] = 'neustart';
 		$_SESSION['configFile'] = 'myConfig.ini';
 	}
@@ -52,7 +52,7 @@ function parseUrl() {
 	// determine action, if any
 	if ($urlPartsLength > 1) {
 		$action = $urlParts[1];
-		$_SESSION['action'] = $action;
+		$_SESSION['action'] = $_SESSION['resourceID'] = $action;
 	} else
 		$_SESSION['action'] = '';
 
@@ -71,6 +71,7 @@ function loadRequestedController() {
 		case 'text': TextMessageController::run(); break;
 		case 'call': PhoneCallController::run(); break;
 		case 'schedule': ScheduleController::run(); break;
+		case 'weeklytimeblocks': WeeklyTimeBlocksController::run(); break;
 		case "home":
 		default:
 			$_SESSION['styles'] = array('HomeStyles.css');
