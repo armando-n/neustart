@@ -1,8 +1,13 @@
 import 'babel-polyfill';
 import { zPad } from './utils.es6.js';
 import * as timeBlockService from './timeblock-service.es6.js';
+import WeeklyTimeBlock from './weekly-timeblock-model.es6.js';
 
 window.addEventListener('load', init);
+
+let successAction;
+let cancelAction;
+let mode; // 'add' | 'edit'
 
 function init() {
 	// bind event handlers
@@ -10,9 +15,9 @@ function init() {
 	document.getElementById('texts-repeat-button').onclick = textsRepeatToggled;
 	document.getElementById('calls-button').onclick = callsToggled;
 	document.getElementById('calls-repeat-button').onclick = callsRepeatToggled;
-	document.getElementById('close-modal').onclick = closeModal;
-	document.querySelector('#modal-buttons > input[type="button"]').onclick = closeModal;
-	document.querySelector('#modal-buttons > input[type="submit"]').onclick = timeBlockService.edit;
+	document.getElementById('close-modal').onclick = cancelClicked;
+	document.querySelector('#modal-buttons > input[type="button"]').onclick = cancelClicked;
+	document.querySelector('#modal-buttons > input[type="submit"]').onclick = submitClicked;
 	document.querySelectorAll('input[type="number"]').forEach(input =>
 		input.onfocus = (event) => event.target.select()
 	);
@@ -22,7 +27,12 @@ function init() {
 }
 
 /** Loads and displays the time block parameter's data in a modal dialog */
-export function show(block) {
+export function show(block, addOrEdit = 'edit', onSubmitSuccess, onCancel) {
+	mode = addOrEdit;
+	successAction = onSubmitSuccess;
+	cancelAction = onCancel;
+	document.querySelector('#block-detail-modal .modal-title')
+		.textContent = addOrEdit === 'edit' ? 'Edit Time Block' : 'Add Time Block';
 
 	// reset button states
 	textsToggled.call(document.getElementById('texts-button'), undefined, false);
@@ -31,9 +41,11 @@ export function show(block) {
 	// fill input fields with time block data
 	document.getElementById('startTime').value = zPad(block.startHour)+':'+zPad(block.startMinute);
 	document.getElementById('endTime').value = zPad(block.endHour)+':'+zPad(block.endMinute);
-	document.getElementById('textRepeatDuration').value = block.repeatTextDuration;
-	document.getElementById('callRepeatDuration').value = block.repeatCallDuration;
-	document.getElementById('comment').value = block.comment;
+	document.getElementById('repeatTextDuration').value = block.repeatTextDuration;
+	document.getElementById('repeatCallDuration').value = block.repeatCallDuration;
+	document.getElementById('comment').value = block.comment || '';
+	document.getElementById('blockID').value = block.blockID || '';
+	document.getElementById('dayOfWeek').value = block.dayOfWeek;
 
 	// set 'texts' button states
 	if (block.isReceivingTexts) {
@@ -69,6 +81,27 @@ export function show(block) {
 	}
 }
 
+function getFormTimeBlock() {
+	// collect form data
+	const startHour = document.getElementById('startTime').value.slice(0, 2);
+	const startMinute = document.getElementById('startTime').value.slice(3);
+	const endHour = document.getElementById('endTime').value.slice(0, 2);
+	const endMinute = document.getElementById('endTime').value.slice(3);
+
+	return new WeeklyTimeBlock({
+		startHour, startMinute, endHour, endMinute,
+		blockID: document.getElementById('blockID').value,
+		dayOfWeek: document.getElementById('dayOfWeek').value,
+		isReceivingTexts: document.getElementById('texts-button').classList.contains('pressed'),
+		isReceivingCalls: document.getElementById('calls-button').classList.contains('pressed'),
+		isTextRepeating: document.getElementById('texts-repeat-button').classList.contains('pressed'),
+		isCallRepeating: document.getElementById('calls-repeat-button').classList.contains('pressed'),
+		repeatTextDuration: document.getElementById('repeatTextDuration').value.trim(),
+		repeatCallDuration: document.getElementById('repeatCallDuration').value.trim(),
+		comment: document.getElementById('comment').value.trim()
+	});
+}
+
 function isModalOpen() {
 	return window.getComputedStyle(getModal()).getPropertyValue('display')  !== 'none';
 }
@@ -78,6 +111,28 @@ function getModal() {
 }
 
 // --------------------------- Event Handlers --------------------------- \\
+
+function submitClicked(event) {
+	event.preventDefault();
+	const timeBlock = getFormTimeBlock();
+	if (mode === 'edit')
+		timeBlockService.edit(timeBlock).then(() => {
+			closeModal();
+			successAction();
+		}).catch(error => console.log(error));
+	else // mode === 'add'
+		timeBlockService.add(timeBlock).then(newTimeBlock => {
+			closeModal();
+			successAction();
+		}).catch(error => console.log(error));
+}
+
+function cancelClicked(event) {
+	event.preventDefault();
+	closeModal();
+	if (cancelAction)
+		cancelAction();
+}
 
 function textsToggled(event, isButtonPressed = !d3.select(this).classed('pressed')) {
 	// highlight texts button
@@ -100,7 +155,7 @@ function textsRepeatToggled(event, isButtonPressed = !d3.select(this).classed('p
 
 	// responsive invis & disable input for duration group
 	d3.select('#texts-repeat-duration-group').classed('responsive-invis', !isButtonPressed);
-	d3.select('#textRepeatDuration').property('disabled', !isButtonPressed);
+	d3.select('#repeatTextDuration').property('disabled', !isButtonPressed);
 }
 
 function callsToggled(event, isButtonPressed = !d3.select(this).classed('pressed')) {
@@ -124,7 +179,7 @@ function callsRepeatToggled(event, isButtonPressed = !d3.select(this).classed('p
 
 	// responsive invis & disable input for duration group
 	d3.select('#calls-repeat-duration-group').classed('responsive-invis', !isButtonPressed);
-	d3.select('#callRepeatDuration').property('disabled', !isButtonPressed);
+	d3.select('#repeatCallDuration').property('disabled', !isButtonPressed);
 }
 
 function closeModal() {

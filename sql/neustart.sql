@@ -141,13 +141,14 @@ insert into WeeklyContactProfiles_TimeBlocks (
 	)
 	values
 		('tuesday', 8, 1, 23, 59, true, true, false, false, 5, 10, 'I hope this works', 1),
-		('monday', 8, 1, 23, 0, true, true, false, false, 5, 10, 'I hope this works', 1),
-		('wednesday', 8, 1, 23, 0, true, true, false, false, 5, 10, 'I hope this works', 1),
-		('wednesday', 23, 1, 23, 59, false, true, false, false, 5, 10, 'I hope this works', 1),
+		('monday', 8, 0, 23, 0, true, true, false, false, 5, 10, 'I hope this works', 1),
+		('wednesday', 8, 0, 12, 0, true, true, false, false, 5, 10, 'I hope this works', 1),
+		('wednesday', 12, 0, 13, 30, false, true, false, false, 5, 10, 'I hope this works', 1),
+		('wednesday', 16, 0, 23, 59, true, false, false, false, 5, 10, 'I hope this works', 1),
 		('sunday', 0, 0, 23, 59, true, true, false, false, 5, 10, 'I hope this works', 1),
-		('thursday', 8, 1, 23, 0, true, false, false, false, 5, 10, 'I hope this works', 1),
+		('thursday', 8, 0, 16, 0, true, false, false, false, 5, 10, 'I hope this works', 1),
 		('saturday', 0, 0, 23, 59, false, true, false, false, 5, 10, 'I hope this works', 1),
-		('friday', 10, 1, 23, 59, true, true, false, false, 5, 10, 'I hope this works', 1);
+		('friday', 10, 0, 23, 59, true, true, false, false, 5, 10, 'I hope this works', 1);
 
 insert into TransientContactTimeBlocks (
 		startTime,

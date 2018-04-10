@@ -22,7 +22,6 @@ export function clearButtons() {
 }
 
 function toggleButton() {
-	console.log('toolbar togglebutton');
 	// deselect other toolbar buttons
 	Array.from(document.querySelectorAll('#toolbar-buttons > button')).forEach(button => {
 		if (button !== this)

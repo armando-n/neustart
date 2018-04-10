@@ -62,8 +62,9 @@ abstract class ModelObject {
 
 	protected function validateString($fieldName, $regex, $failMessage, $isRequired = false) {
 		$str = $this->extractForm($this->formInput, $fieldName);
-		if ($isRequired && empty($str)) {
-			$this->setError($fieldName, 'Name is required.');
+		if (empty($str)) {
+			if ($isRequired)
+				$this->setError($fieldName, 'Name is required.');
 			return;
 		}
 

@@ -31,16 +31,33 @@ class DashboardView {
 		</div>
 
 		<div class="svg-wrapper">
-			<svg id="svg"></svg>
+			<svg id="svg">
+				<defs>
+					<radialGradient id="radial-gradiant-new-rect" fx="5%" fy="5%" cx="35%" cy="25%" r="85%" spreadMethod="pad">
+						<stop offset="0%" />
+						<stop offset="100%" />
+					</radialGradient>
+					<radialGradient id="radial-gradiant-text-and-call" fx="5%" fy="5%" cx="35%" cy="25%" r="85%" spreadMethod="pad">
+						<stop offset="0%" />
+						<stop offset="100%" />
+					</radialGradient>
+					<radialGradient id="radial-gradiant-text-only" fx="5%" fy="5%" cx="35%" cy="25%" r="85%" spreadMethod="pad">
+						<stop offset="0%" />
+						<stop offset="100%" />
+					</radialGradient>
+					<radialGradient id="radial-gradiant-call-only" fx="5%" fy="5%" cx="35%" cy="25%" r="85%" spreadMethod="pad">
+						<stop offset="0%" />
+						<stop offset="100%" />
+					</radialGradient>
+				</defs>
+			</svg>
 		</div>
 	</div>
 
 	<div id="block-detail-modal">
 		<span id="close-modal" class="close-button">x</span>
-		<div class="modal-title">
-			Edit Time Block
-		</div>
-		<form action="/time-block/details">
+		<div class="modal-title"></div>
+		<form id="timeblock-form" action="/time-block/details">
 			<fieldset>
 				<div class="input-group">
 					<label for="startTime" class="time-label">Start</label>
@@ -56,17 +73,19 @@ class DashboardView {
 				<div id="text-settings" class="input-group">
 					<span id="texts-button" class="toggle-button">Texts</span>
 					<span id="texts-repeat-button" class="toggle-button">Repeat</span>
-					<span id="texts-repeat-duration-group">for <input type="number" id="textRepeatDuration" name="textRepeatDuration" class="number" min="0" inputmode="numeric" size="2" maxlength="2" pattern="[0-9]*" title="Enter a number from 0-99" /> mins</span>
+					<span id="texts-repeat-duration-group">for <input type="number" id="repeatTextDuration" name="repeatTextDuration" class="number" min="0" inputmode="numeric" size="2" maxlength="2" pattern="[0-9]*" title="Enter a number from 0-99" /> mins</span>
 				</div>
 				<div id="call-settings" class="input-group">
 					<span id="calls-button" class="toggle-button">Calls</span>
 					<span id="calls-repeat-button" class="toggle-button">Repeat</span>
-					<span id="calls-repeat-duration-group">for <input type="number" id="callRepeatDuration" name="callRepeatDuration" class="number" min="0" inputmode="numeric" size="2" maxlength="2" pattern="[0-9]*" title="Enter a number from 0-99" /> mins</span>
+					<span id="calls-repeat-duration-group">for <input type="number" id="repeatCallDuration" name="repeatCallDuration" class="number" min="0" inputmode="numeric" size="2" maxlength="2" pattern="[0-9]*" title="Enter a number from 0-99" /> mins</span>
 				</div>
 			</fieldset>
 			<fieldset>
 				<legend>Comment</legend>
 				<textarea id="comment" name="comment" cols="18" rows="3"></textarea>
+				<input id="blockID" type="hidden" name="blockID" />
+				<input id="dayOfWeek" type="hidden" name="dayOfWeek" />
 			</fieldset>
 			<fieldset>
 				<div id="modal-buttons">

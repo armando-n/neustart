@@ -4,6 +4,21 @@ $highlight-border-color: #438bff;
 $toolbar-border-color: #0c4eb7;
 $toolbar-text-color: #226de7;
 
+// block colors
+$block-green: #57aa57;
+$block-dark-green: #2e6e2e;
+$block-bright-green: #57e057;
+
+$block-yellow: #cfcf6f;
+$block-dark-yellow: #979724;
+$block-bright-yellow: #ffffb3;
+
+$block-blue: #4286f4;
+$block-dark-blue: #0c4eb7;
+$block-bright-blue: #6fa6ff;
+
+$block-bright-red: #f185a8;
+
 /* Misc Utility Styles */
 .noselect {
 	-webkit-touch-callout: none; /* iOS Safari */
@@ -71,6 +86,10 @@ $toolbar-text-color: #226de7;
 		}
 	}
 
+	g.axis text {
+		@extend .noselect;
+	}
+
 	rect.day {
 		fill: none;
 		stroke: #181818;
@@ -78,43 +97,68 @@ $toolbar-text-color: #226de7;
 	}
 
 	text.day-title {
+		@extend .noselect;
 		font-weight: bold;
 		text-transform: capitalize;
 		fill: lightgray;
+		pointer-events: none;
+	}
+
+	#radial-gradiant-new-rect {
+		stop:first-child { stop-color: #e6e6e6 }
+		stop:last-child { stop-color: #6d6d6d }
+	}
+	#radial-gradiant-text-and-call {
+		stop:first-child { stop-color: $block-green }
+		stop:last-child { stop-color: $block-dark-green }
+	}
+	#radial-gradiant-text-only {
+		stop:first-child { stop-color: $block-blue }
+		stop:last-child { stop-color: $block-dark-blue }
+	}
+	#radial-gradiant-call-only {
+		stop:first-child { stop-color: $block-yellow }
+		stop:last-child { stop-color: $block-dark-yellow }
 	}
 
 	rect.time-block {
-		stroke-width: 1;
+		stroke-width: 2;
 		opacity: 0.5;
 		cursor: pointer;
 
-		&.text-and-call {
-			stroke: #2e6e2e;
-			fill: #57aa57;
-			&.delete-mode:hover { fill: #f185a8 }
+		&.time-block-new {
+			opacity: 0.5;
+			stroke: darkgray;
+			fill: url(#radial-gradiant-new-rect);
 		}
-		&.text-and-call:hover { fill: #57e057 }
+
+		&.text-and-call {
+			stroke: $block-dark-green;
+			fill: url(#radial-gradiant-text-and-call);
+			&.delete-mode:hover { fill: $block-bright-red }
+		}
+		&.text-and-call:hover { fill: $block-bright-green }
 
 		&.text-only {
-			stroke: #0c4eb7;
-			fill: #4286f4;
-			&.delete-mode:hover { fill: #f185a8 }
+			stroke: $block-dark-blue;
+			fill: url(#radial-gradiant-text-only);
+			&.delete-mode:hover { fill: $block-bright-red }
 		}
-		&.text-only:hover { fill: #6fa6ff }
+		&.text-only:hover { fill: $block-bright-blue }
 
 		&.call-only {
-			stroke: #979724;
-			fill: #cfcf6f;
-			&.delete-mode:hover { fill: #f185a8 }
+			stroke: $block-dark-yellow;
+			fill: url(#radial-gradiant-call-only);
+			&.delete-mode:hover { fill: $block-bright-red }
 		}
-		&.call-only:hover { fill: #ffffb3 }
+		&.call-only:hover { fill: $block-bright-yellow }
 
 		&.no-text-or-call {
 			stroke: #862141;
 			fill: #ba5776;
 			cursor: default;
 		}
-		&.no-text-or-call:hover { fill: #f185a8 }
+		&.no-text-or-call:hover { fill: $block-bright-red }
 	}
 }
 

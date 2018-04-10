@@ -13,7 +13,7 @@ class WeeklyTimeBlocksDB {
 			$db = Database::getDB();
 			$stmt = $db->prepare(
 				'insert into WeeklyContactProfiles_TimeBlocks (
-					blocKID,
+					blockID,
 					dayOfWeek,
 					startHour,
 					startMinute,
@@ -28,7 +28,7 @@ class WeeklyTimeBlocksDB {
 					comment,
 					profileID
 				) values (
-					:blocKID,
+					:blockID,
 					:dayOfWeek,
 					:startHour,
 					:startMinute,
@@ -177,8 +177,7 @@ class WeeklyTimeBlocksDB {
 					isCallRepeating = :isCallRepeating,
 					repeatTextDuration = :repeatTextDuration,
 					repeatCallDuration = :repeatCallDuration,
-					comment = :comment,
-					profileID = :profileID
+					comment = :comment
 				where blockID = :blockID'
 			);
 			$stmt->execute(array(
@@ -194,7 +193,6 @@ class WeeklyTimeBlocksDB {
 				':repeatTextDuration' => $timeBlock->getRepeatTextDuration(),
 				':repeatCallDuration' => $timeBlock->getRepeatCallDuration(),
 				':comment' => $timeBlock->getComment(),
-				':profileID' => $timeBlock->getProfileID(),
 				':blockID' => $timeBlock->getBlockID()
 			));
 		} catch (PDOException $e) {

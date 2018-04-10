@@ -21,7 +21,7 @@ class TimeBlock extends ModelObject {
 	}
 
 	public function setBlockID($id) {
-		$this->formInput['blockID'] = $blockID;
+		$this->formInput['blockID'] = $id;
 		$this->validateBlockID();
 	}
 
@@ -107,7 +107,7 @@ class TimeBlock extends ModelObject {
 	}
 
 	private function validateBlockID() {
-		$this->blockID = $this->validateNumber('blockID');
+		$this->blockID = intval($this->validateNumber('blockID'));
 	}
 
 	private function validateIsReceivingTexts() {
@@ -135,7 +135,7 @@ class TimeBlock extends ModelObject {
 	}
 
 	private function validateComment() {
-		$this->comment = $this->validateString('comment', '/^[\s\w\-\.\'&,\+\?\(\)\$\*\|!]+$/'
+		$this->comment = $this->validateString('comment', '/^[\s\w\-\.\'&,\+\?\(\)\$\*\|!]*$/'
 			, 'Comment can only contain letters, numbers, basic punctuation, dashes, and underscores.');
 	}
 

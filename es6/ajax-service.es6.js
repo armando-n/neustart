@@ -1,17 +1,21 @@
 import 'babel-polyfill';
 
+/** Make a GET request using the given url (and data, if present). */
 function get(url, data = {}) {
 	return request (url, data, { method: 'GET' });
 }
 
+/** Make a POST request using the given url (and data, if present). */
 function post(url, data = {}) {
 	return request (url, data, { method: 'POST' });
 }
 
+/** Make a PUT request using the given url (and data, if present). */
 function put(url, data = {}) {
 	return request(url, data, { method: 'PUT' });
 }
 
+/** Make a DELETE request using the given url (and data, if present). */
 function remove(url, data = {}) {
 	return request(url, data, { method: 'DELETE' });
 }

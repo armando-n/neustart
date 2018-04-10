@@ -65,7 +65,7 @@ class WeeklyTimeBlock extends TimeBlock implements JsonSerializable {
 			'Start minute: [' . $this->startMinute . "]\n" .
 			'End hour: [' . $this->endHour . "]\n" .
 			'End minute: [' . $this->endMinute . "]\n" .
-			'User ID: [' . $this->profileID . ']';
+			'Profile ID: [' . $this->profileID . ']';
 	}
 
 	protected function initialize() {

@@ -92,6 +92,33 @@ class WeeklyContactProfilesDB {
 		return $profile;
 	}
 
+	public static function getActiveProfileID($userID) {
+		$activeProfileID = -1;
+
+		try {
+			$db = Database::getDB();
+			$stmt = $db->prepare(
+				'select profileID
+				from Users join WeeklyContactProfiles using (userID)
+				where userID = :userID and isProfileActive = true'
+			);
+			$stmt->execute(array(':userID' => $userID));
+
+			$profileID = $stmt->fetchColumn();
+			if (!is_numeric($profileID))
+				throw new PDOException('Failed to fetch active profile ID');
+
+			$activeProfileID = $profileID;
+
+		} catch (PDOException $e) {
+			echo $e->getMessage();
+		} catch (RuntimeException $e) {
+			echo $e->getMessage();
+		}
+
+		return $activeProfileID;
+	}
+
 	/** Retrieves the contact profile from the database with the given profileID. */
 	public static function get($profileID): ?WeeklyContactProfile {
 		return self::getBy('profileID', $profileID);
