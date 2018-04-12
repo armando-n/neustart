@@ -55,11 +55,19 @@ class WeeklyTimeBlock {
 	}
 
 	get startTime() {
-		return new Date(moment({hour: this.startHour, minute: this.startMinute}).day(this.dayIndex).toDate().valueOf());
+		return new Date(this.startMoment.toDate().valueOf());
 	}
 
 	get endTime() {
-		return new Date(moment({hour: this.endHour, minute: this.endMinute}).day(this.dayIndex).toDate().valueOf());
+		return new Date(this.endMoment.toDate().valueOf());
+	}
+
+	get startMoment() {
+		return moment({hour: this.startHour, minute: this.startMinute}).day(this.dayIndex);
+	}
+
+	get endMoment() {
+		return moment({hour: this.endHour, minute: this.endMinute}).day(this.dayIndex);
 	}
 
 	get type() {

@@ -87,6 +87,64 @@ export class WeeklySchedule {
 		const [dayIndex, blockIndex] = getDayAndBlockIndexes.call(this, blockID);
 		return this.daysWithTimeBlocks[dayIndex].values[blockIndex];
 	}
+
+	/** Returns top & bottom boundaries (as moments) for the time block with the given ID.
+	 * These boundaries indicate the extent to which the time block can grow
+	 * before running either into another time block, or running off the day. */
+	findGrowthBoundaries(blockID) {
+		const [dayIndex, blockIndex] = getDayAndBlockIndexes.call(this, blockID);
+		const timeBlocks = this.daysWithTimeBlocks[dayIndex].values;
+
+		let topBoundaryTime = moment().day(dayIndex).startOf('day');
+		let bottomBoundaryTime = moment().day(dayIndex).endOf('day');
+		if (blockIndex > 0)
+			topBoundaryTime = timeBlocks[blockIndex-1].endMoment;
+		if (blockIndex < timeBlocks.length-1)
+			bottomBoundaryTime = timeBlocks[blockIndex+1].startMoment;
+
+		return [topBoundaryTime, bottomBoundaryTime];
+	}
+
+	/** Given a time that does not lie within any time block, this will return
+	 * the upper and lower boundary times (as moments) of this empty space for the day.
+	 * The upper and lower boundaries will either be the beginning or end of the day,
+	 * or the end or beginning of an adjacent block, respectively. */
+	findEmptyBoundaries(time, dayIndex = time.getDay()) {
+		const day = this.daysWithTimeBlocks[dayIndex];
+		let topBoundary;
+		let bottomBoundary;
+		time = moment(time).day(dayIndex);
+
+		for (let i = 0; i < day.values.length; i++) {
+			const block = day.values[i];
+
+			// target time is before any blocks
+			if (!topBoundary && block.startMoment.isAfter(time, 'minute')) {
+				topBoundary = moment().day(dayIndex).startOf('day');
+				bottomBoundary = block.startMoment;
+				break;
+			}
+
+			// target time is after the last block
+			else if (!bottomBoundary && i === day.values.length-1) {
+				topBoundary = block.endMoment;
+				bottomBoundary = moment().day(dayIndex).endOf('day');
+				break;
+			}
+
+			// target time may be in between this block and the next block
+			else {
+				const nextBlock = day.values[i+1];
+				if (time.isAfter(block.endTime, 'minute') && time.isBefore(nextBlock.startTime, 'minute')) {
+					topBoundary = block.endMoment;
+					bottomBoundary = nextBlock.startMoment;
+					break;
+				}
+			}
+		}
+
+		return [topBoundary, bottomBoundary];
+	}
 }
 
 function getDayAndBlockIndexes(blockID) {

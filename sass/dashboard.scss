@@ -3,6 +3,7 @@ $highlight-color: #2371ee;
 $highlight-border-color: #438bff;
 $toolbar-border-color: #0c4eb7;
 $toolbar-text-color: #226de7;
+$fun-blue: #4286f4;
 
 // block colors
 $block-green: #57aa57;
@@ -75,14 +76,20 @@ $block-bright-red: #f185a8;
 
 	.tracking-empty {
 		line {
-			stroke: orange;
+			stroke: $fun-blue;
 			stroke-width: 2;
 		}
 		text {
-			fill: #f59f00;
-			font-weight: bold;
-			stroke: black;
-			stroke-width: 0.1;
+			@extend .noselect;
+			fill: $fun-blue;
+		}
+		rect.track-text-border {
+			fill: #1f1f1f;
+			fill-opacity: 0.85;
+			stroke: #1853ac;
+			stroke-width: 2;
+			rx: 6;
+			ry: 6;
 		}
 	}
 
