@@ -8,7 +8,6 @@ import { toNum, to12Hours, zPad } from './utils.es6.js';
 import WeeklyTimeBlock from './weekly-timeblock-model.es6.js';
 
 let mode = '';
-let prevMode = '';
 
 export function createSvg(weeklySchedule) {
 	const dimensions = getDimensions();
@@ -137,8 +136,6 @@ export function createSvg(weeklySchedule) {
 				// determine height to snap to for new time block rect
 				const snapTo = getSnapTo(this, scale);
 				const newRect = d3.select('.time-block-new');
-				const paddingV = 2.5;
-				const paddingH = 5;
 				let newRectHeight;
 				if (snapTo.y - newRect.attr('y') > 1) {
 					newRectHeight = snapTo.y - newRect.attr('y');
@@ -151,49 +148,24 @@ export function createSvg(weeklySchedule) {
 				}
 
 				newRect.attr('height', newRectHeight);
+				const lineY = toNum(newRect.attr('y')) + toNum(newRect.attr('height'));
+				const lineText = `${snapTo.hours12}:${zPad(snapTo.minutes)} ${snapTo.meridiem}`;
 
 				// move tracking line/text for the bottom of the new time block rect
-				const lineY = toNum(newRect.attr('y')) + toNum(newRect.attr('height'));
-				trackLineBottom
-					.attr('display', 'inline')
-					.attr('y1', lineY).attr('y2', lineY);
-				trackTextBottom
-					.attr('display', 'inline')
-					.attr('x', snapTo.x).attr('y', snapTo.y + 21)
-					.text(`${snapTo.hours12}:${zPad(snapTo.minutes)} ${snapTo.meridiem}`);
-				const textBBox = trackTextBottom.node().getBBox();
-				trackTextBorderBottom
-					.attr('display', 'inline')
-					.attr('x', textBBox.x - paddingH)
-					.attr('y', textBBox.y - paddingV)
-					.attr('width', textBBox.width + paddingH*2)
-					.attr('height', textBBox.height + paddingV*2);
+				Hover.showBottomLine(lineY, snapTo.x, snapTo.y + 21, lineText);
 			}
 
+			// move line/text to mouse pointer and display corresponding time-value
 			else {
-				// determine x/y values to snap the line and text to
 				const snapTo = getSnapTo(this, scale);
-				const paddingV = 2.5;
-				const paddingH = 5;
-
-				// move line/text to mouse pointer and display corresponding time-value
-				trackLine.attr('y1', snapTo.y).attr('y2', snapTo.y);
-				trackText.attr('x', snapTo.x).attr('y', snapTo.y - 10)
-					.text(`${snapTo.hours12}:${zPad(snapTo.minutes)} ${snapTo.meridiem}`);
-				const textBBox = trackText.node().getBBox();
-				trackTextBorder
-					.attr('x', textBBox.x - paddingH)
-					.attr('y', textBBox.y - paddingV)
-					.attr('width', textBBox.width + paddingH*2)
-					.attr('height', textBBox.height + paddingV*2);
+				const lineText = `${snapTo.hours12}:${zPad(snapTo.minutes)} ${snapTo.meridiem}`;
+				Hover.showTopLine(snapTo.y, snapTo.x, snapTo.y - 10, lineText);
 			}
 		})
 		.on('mouseup', function() {
 			if (mode === 'creating') {
 				// remove tracking lines and texts
-				trackLineBottom.attr('display', 'none');
-				trackTextBottom.attr('display', 'none');
-				trackTextBorderBottom.attr('display', 'none');
+				Hover.hideBotomLine();
 
 				// create basic new time block from new rect data
 				const newTimeBlock = createBlockFromNewRect(this, scale);
@@ -211,12 +183,7 @@ export function createSvg(weeklySchedule) {
 			}
 
 			// remove tracking lines and texts
-			trackLine.attr('display', 'none');
-			trackText.attr('display', 'none');
-			trackTextBorder.attr('display', 'none');
-			trackLineBottom.attr('display', 'none');
-			trackTextBottom.attr('display', 'none');
-			trackTextBorderBottom.attr('display', 'none');
+			Hover.hideLines();
 		});
 
 	// bind data and draw day squares and time blocks for each day of the week
@@ -333,7 +300,7 @@ function setWeeklyData(weeklySchedule = timeBlockService.getActiveWeeklySchedule
 						else
 							d3.select(this).attr('y', newTopY);
 
-						// show top/bottom tracking lines/text
+						// determine positioning/values for top/bottom lines/texts
 						const paddingV = 2.5;
 						const paddingH = 5;
 						const topTime = yScale.invert(newTopY);
@@ -341,40 +308,12 @@ function setWeeklyData(weeklySchedule = timeBlockService.getActiveWeeklySchedule
 						const bottomTime =yScale.invert(newBottomY);
 						const [bottomHours12, bottomMeridiem] = to12Hours(bottomTime.getHours());
 						const x = d3.mouse(d3.select('.tracking-empty').node())[0];
+						const topLineText = `${zPad(topHours12)}:${zPad(topTime.getMinutes())} ${topMeridiem}`;
+						const bottomLineText = `${zPad(bottomHours12)}:${zPad(bottomTime.getMinutes())} ${bottomMeridiem}`;
 
-						// adjust top tracking line/text
-						d3.select('#track-line-top')
-							.attr('display', 'inline')
-							.attr('y1', newTopY).attr('y2', newTopY);
-						d3.select('#track-text-top')
-							.attr('display', 'inline')
-							.attr('x', x)
-							.attr('y', newTopY - 10)
-							.text(`${zPad(topHours12)}:${zPad(topTime.getMinutes())} ${topMeridiem}`);
-						const topTextBBox = d3.select('#track-text-top').node().getBBox();
-						d3.select('#track-text-border-top')
-						.attr('display', 'inline')
-							.attr('x', topTextBBox.x - paddingH)
-							.attr('y', topTextBBox.y - paddingV)
-							.attr('width', topTextBBox.width + paddingH*2)
-							.attr('height', topTextBBox.height + paddingV*2);
-
-						// adjust bottom tracking line/text
-						d3.select('#track-line-bottom')
-							.attr('display', 'inline')
-							.attr('y1', newBottomY).attr('y2', newBottomY);
-						d3.select('#track-text-bottom')
-							.attr('display', 'inline')
-							.attr('x', x)
-							.attr('y', newBottomY + 21)
-							.text(`${zPad(bottomHours12)}:${zPad(bottomTime.getMinutes())} ${bottomMeridiem}`);;
-						const bottomTextBBox = d3.select('#track-text-bottom').node().getBBox();
-						d3.select('#track-text-border-bottom')
-							.attr('display', 'inline')
-							.attr('x', bottomTextBBox.x - paddingH)
-							.attr('y', bottomTextBBox.y - paddingV)
-							.attr('width', bottomTextBBox.width + paddingH*2)
-							.attr('height', bottomTextBBox.height + paddingV*2);
+						// adjust top and bottom tracking lines/texts
+						Hover.showTopLine(newTopY, x, newTopY - 10, topLineText);
+						Hover.showBottomLine(newBottomY, x, newBottomY + 21, bottomLineText);
 					})
 					.on('end', function(timeBlock) {
 						if (mode !== '')
@@ -391,12 +330,7 @@ function setWeeklyData(weeklySchedule = timeBlockService.getActiveWeeklySchedule
 						tempModifiedTimeBlock.endHour = newEndTime.getHours();
 						tempModifiedTimeBlock.endMinute = newEndTime.getMinutes();
 
-						d3.select('#track-text-top').attr('display', 'none');
-						d3.select('#track-text-bottom').attr('display', 'none');
-						d3.select('#track-line-top').attr('display', 'none');
-						d3.select('#track-line-bottom').attr('display', 'none');
-						d3.select('#track-text-border-top').attr('display', 'none');
-						d3.select('#track-text-border-bottom').attr('display', 'none');
+						Hover.hideLines();
 
 						const editCanceled = () => d3.select(this)
 							.transition()
@@ -541,6 +475,65 @@ function timeBlockColorClass(timeBlock) {
 		return timeBlock.isReceivingCalls ? 'text-and-call' : 'text-only';
 	} else {
 		return timeBlock.isReceivingCalls ? 'call-only' : 'no-text-or-call';
+	}
+}
+
+class Hover {
+	static showTopLine(lineY, textX, textY = lineY, lineText) {
+		const paddingV = 2.5;
+		const paddingH = 5;
+
+		d3.select('#track-line-top')
+			.attr('display', 'inline')
+			.attr('y1', lineY).attr('y2', lineY);
+		const trackText = d3.select('#track-text-top')
+			.attr('display', 'inline')
+			.attr('x', textX).attr('y', textY)
+			.text(lineText);
+		const textBBox = trackText.node().getBBox();
+		d3.select('#track-text-border-top')
+			.attr('display', 'inline')
+			.attr('x', textBBox.x - paddingH)
+			.attr('y', textBBox.y - paddingV)
+			.attr('width', textBBox.width + paddingH*2)
+			.attr('height', textBBox.height + paddingV*2);
+	}
+
+	static showBottomLine(lineY, textX, textY = lineY, lineText) {
+		const paddingV = 2.5;
+		const paddingH = 5;
+
+		d3.select('#track-line-bottom')
+			.attr('display', 'inline')
+			.attr('y1', lineY).attr('y2', lineY);
+		const trackTextBottom = d3.select('#track-text-bottom')
+			.attr('display', 'inline')
+			.attr('x', textX).attr('y', textY)
+			.text(lineText);
+		const textBBox = trackTextBottom.node().getBBox();
+		d3.select('#track-text-border-bottom')
+			.attr('display', 'inline')
+			.attr('x', textBBox.x - paddingH)
+			.attr('y', textBBox.y - paddingV)
+			.attr('width', textBBox.width + paddingH*2)
+			.attr('height', textBBox.height + paddingV*2);
+	}
+
+	static hideTopLine() {
+		d3.select('#track-line-top').attr('display', 'none');
+		d3.select('#track-text-top').attr('display', 'none');
+		d3.select('#track-text-border-top').attr('display', 'none');
+	}
+
+	static hideBotomLine() {
+		d3.select('#track-line-bottom').attr('display', 'none');
+		d3.select('#track-text-bottom').attr('display', 'none');
+		d3.select('#track-text-border-bottom').attr('display', 'none');
+	}
+
+	static hideLines() {
+		Hover.hideTopLine();
+		Hover.hideBotomLine();
 	}
 }
 
