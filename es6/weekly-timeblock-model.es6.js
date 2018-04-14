@@ -35,13 +35,13 @@ class WeeklyTimeBlock {
 			throw new Error('Required arguments missing in WeeklyTimeBLock constructor');
 		}
 
-		this.blockID = blockID || undefined;
+		this.blockID = blockID ? +blockID : undefined;
 		this.comment = comment || undefined;
 		this.dayOfWeek = dayOfWeek;
-		this.startHour = startHour;
-		this.startMinute = startMinute;
-		this.endHour = endHour;
-		this.endMinute = endMinute;
+		this.startHour = +startHour;
+		this.startMinute = +startMinute;
+		this.endHour = +endHour;
+		this.endMinute = +endMinute;
 		this.isReceivingTexts = isReceivingTexts;
 		this.isReceivingCalls = isReceivingCalls;
 		this.isTextRepeating = isTextRepeating;

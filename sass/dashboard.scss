@@ -71,7 +71,7 @@ $block-bright-red: #f185a8;
 
 	.background {
 		fill: gray;
-		opacity: 0.15;
+		opacity: 0.25;
 	}
 
 	.tracking-empty {
@@ -135,7 +135,8 @@ $block-bright-red: #f185a8;
 
 		&.time-block-new {
 			opacity: 0.5;
-			stroke: darkgray;
+			stroke: #2179ec;
+			stroke-width: 1;
 			fill: url(#radial-gradiant-new-rect);
 		}
 
@@ -143,29 +144,33 @@ $block-bright-red: #f185a8;
 			stroke: $block-dark-green;
 			fill: url(#radial-gradiant-text-and-call);
 			&.delete-mode:hover { fill: $block-bright-red }
+			&.no-hover { cursor: default }
 		}
-		&.text-and-call:hover { fill: $block-bright-green }
+		&.text-and-call:hover:not(.no-hover) { fill: $block-bright-green }
 
 		&.text-only {
 			stroke: $block-dark-blue;
 			fill: url(#radial-gradiant-text-only);
 			&.delete-mode:hover { fill: $block-bright-red }
+			&.no-hover { cursor: default }
 		}
-		&.text-only:hover { fill: $block-bright-blue }
+		&.text-only:hover:not(.no-hover) { fill: $block-bright-blue }
 
 		&.call-only {
 			stroke: $block-dark-yellow;
 			fill: url(#radial-gradiant-call-only);
 			&.delete-mode:hover { fill: $block-bright-red }
+			&.no-hover { cursor: default }
 		}
-		&.call-only:hover { fill: $block-bright-yellow }
+		&.call-only:hover:not(.no-hover) { fill: $block-bright-yellow }
 
 		&.no-text-or-call {
 			stroke: #862141;
 			fill: #ba5776;
 			cursor: default;
+			&.no-hover { cursor: default }
 		}
-		&.no-text-or-call:hover { fill: $block-bright-red }
+		&.no-text-or-call:hover:not(.no-hover) { fill: $block-bright-red }
 	}
 }
 

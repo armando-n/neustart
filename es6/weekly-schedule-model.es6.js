@@ -58,7 +58,7 @@ export class WeeklySchedule {
 		if (!(weeklyTimeBlock instanceof WeeklyTimeBlock))
 			throw new Error('Invalid time block given to WeeklySchedule.addBlock');
 
-		const dayIndex = WeeklySchedule.days.indexOf(weeklyTimeBlock.dayOfWeek);
+		const dayIndex = weeklyTimeBlock.dayIndex;
 
 		this.daysWithTimeBlocks[dayIndex].values.push(weeklyTimeBlock);
 		this.daysWithTimeBlocks[dayIndex].values.sort(comparator);
@@ -70,7 +70,7 @@ export class WeeklySchedule {
 		if (!(weeklyTimeBlock instanceof WeeklyTimeBlock))
 			throw new Error('Invalid time block given to WeeklySchedule.editBlock');
 
-		const dayIndex = WeeklySchedule.days.indexOf(weeklyTimeBlock.dayOfWeek);
+		const dayIndex = weeklyTimeBlock.dayIndex;
 		const blockIndex = findIndexOfBlock(this.daysWithTimeBlocks[dayIndex].values, weeklyTimeBlock.blockID);
 
 		Object.assign(this.daysWithTimeBlocks[dayIndex].values[blockIndex], weeklyTimeBlock);
@@ -145,6 +145,76 @@ export class WeeklySchedule {
 
 		return [topBoundary, bottomBoundary];
 	}
+
+	/** Returns a special WeeklySchedule object containing only empty time blocks, i.e. a
+	 * WeeklyTimeBlock object for each block of time for which no calls or texts are being received.
+	 * The blocks in the returned schedule represent the times between normal text/call blocks. */
+	getEmptyTimeBlocks() {
+		const daysWithEmptyBlocks = WeeklySchedule.days.map(day => ({ key: day, values: [] }));
+
+		// iterate through each day
+		for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+			const startOfDay = moment().day(dayIndex).startOf('day');
+			const endOfDay = moment().day(dayIndex).endOf('day');
+			const blocks = this.daysWithTimeBlocks[dayIndex].values;
+
+			// the entire day is empty
+			if (blocks.length == 0) {
+				daysWithEmptyBlocks[dayIndex].values.push(new WeeklyTimeBlock({
+					dayOfWeek: WeeklySchedule.days[dayIndex],
+					startHour: startOfDay.hour(),
+					startMinute: startOfDay.minute(),
+					endHour: endOfDay.hour(),
+					endMinute: endOfDay.minute()
+				}));
+			}
+
+			// iterate through each time block of each day
+			for (let blockIndex = 0; blockIndex < blocks.length; blockIndex++) {
+				const currentBlock = blocks[blockIndex];
+
+				// there is an empty space between the start of the day and the first time block
+				if (blockIndex === 0 && currentBlock.startMoment.isAfter(startOfDay, 'minute')) {
+					daysWithEmptyBlocks[dayIndex].values.push(new WeeklyTimeBlock({
+						dayOfWeek: WeeklySchedule.days[dayIndex],
+						startHour: startOfDay.hour(),
+						startMinute: startOfDay.minute(),
+						endHour: currentBlock.startHour,
+						endMinute: currentBlock.startMinute
+					}))
+				}
+
+				// current block isn't the last for the day
+				if (blockIndex !== blocks.length-1) {
+					const nextBlock = blocks[blockIndex+1];
+
+					// there is an empty space between the current and next blocks
+					if (!nextBlock.startMoment.isSame(currentBlock.endMoment, 'minute')) {
+						daysWithEmptyBlocks[dayIndex].values.push(new WeeklyTimeBlock({
+							dayOfWeek: WeeklySchedule.days[dayIndex],
+							startHour: currentBlock.endHour,
+							startMinute: currentBlock.endMinute,
+							endHour: nextBlock.startHour,
+							endMinute: nextBlock.startMinute
+						}));
+					}
+				}
+
+				// there is an empty space between the last block and the end of the day
+				else if (currentBlock.endMoment.isBefore(endOfDay, 'minute')) {
+					daysWithEmptyBlocks[dayIndex].values.push(new WeeklyTimeBlock({
+						dayOfWeek: WeeklySchedule.days[dayIndex],
+						startHour: currentBlock.endHour,
+						startMinute: currentBlock.endMinute,
+						endHour: endOfDay.hour(),
+						endMinute: endOfDay.minute()
+					}));
+				}
+			}
+		}
+
+		return new WeeklySchedule(daysWithEmptyBlocks);
+	}
 }
 
 function getDayAndBlockIndexes(blockID) {
@@ -170,7 +240,6 @@ function getDayAndBlockIndexes(blockID) {
 
 function validateBlock(rawBlock, ignoreDayOfWeek = false) {
 	if (
-		rawBlock.blockID === undefined ||
 		(rawBlock.dayOfWeek === undefined && !ignoreDayOfWeek) ||
 		rawBlock.startHour === undefined ||
 		rawBlock.startMinute === undefined ||
@@ -208,7 +277,7 @@ function comparator(blockA, blockB) {
 			blockA.startMinute > blockB.startMinute
 		)
 	) {
-		return -1;
+		return 1;
 	}
 
 	else if (blockA.startHour === blockB.startHour && blockA.startMinute === blockB.startMinute) {
@@ -216,7 +285,7 @@ function comparator(blockA, blockB) {
 	}
 
 	else {
-		return 1;
+		return -1;
 	}
 }
 

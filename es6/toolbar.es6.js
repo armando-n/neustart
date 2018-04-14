@@ -11,9 +11,10 @@ function init() {
 	document.getElementById('toolbar-split').addEventListener('click', splitClicked);
 	document.getElementById('toolbar-add').addEventListener('click', addClicked);
 	Array.from(document.querySelectorAll('#toolbar-buttons button'))
-		.forEach(button =>
-			button.addEventListener('click', toggleButton)
-		);
+		.forEach(button => {
+			if (button.textContent !== 'Fill')
+				button.addEventListener('click', toggleButton)
+		});
 }
 
 export function clearButtons() {
@@ -23,16 +24,22 @@ export function clearButtons() {
 
 function toggleButton() {
 	// deselect other toolbar buttons
-	Array.from(document.querySelectorAll('#toolbar-buttons > button')).forEach(button => {
-		if (button !== this)
-			button.classList.remove('pressed')
-	});
+	Array.from(document.querySelectorAll('#toolbar-buttons > button'))
+		.forEach(button => {
+			if (button !== this)
+				button.classList.remove('pressed')
+		});
 
 	this.classList.toggle('pressed');
 }
 
 function fillClicked() {
-	console.log('fill clicked');
+	const enableFill = !this.classList.contains('pressed');
+	if (enableFill)
+		this.classList.add('pressed');
+	else
+		this.classList.remove('pressed');
+	svgService.setFillMode(enableFill);
 }
 
 function copyClicked() {

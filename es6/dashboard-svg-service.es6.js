@@ -106,12 +106,10 @@ export function createSvg(weeklySchedule) {
 		.attr('height', dimensions.dayHeight)
 		.attr('fill-opacity', 0.0)
 		.attr('stroke-opacity', 0.0)
-		.on('mouseover', () => {
-			trackLine.attr('display', 'inline');
-			trackText.attr('display', 'inline');
-			trackTextBorder.attr('display', 'inline');
-		})
-		.on('mousedown', function(...args) {
+		.on('mousedown', function() {
+			if (mode !== '')
+				return;
+
 			mode = 'creating';
 
 			// determine the necessary height to make the new rect 30 mins long
@@ -156,7 +154,7 @@ export function createSvg(weeklySchedule) {
 			}
 
 			// move line/text to mouse pointer and display corresponding time-value
-			else {
+			else if (mode === '') {
 				const snapTo = getSnapTo(this, scale);
 				const lineText = `${snapTo.hours12}:${zPad(snapTo.minutes)} ${snapTo.meridiem}`;
 				Hover.showTopLine(snapTo.y, snapTo.x, snapTo.y - 10, lineText);
@@ -206,9 +204,135 @@ export function createSvg(weeklySchedule) {
 		.attr('height', dimensions.dayHeight);
 }
 
-export function setDeleteMode(value = true) {
-	mode = value ? 'delete' : '';
-	d3.selectAll('rect.time-block').classed('delete-mode', value);
+export function setDeleteMode(enable = true) {
+	mode = enable ? 'delete' : '';
+	d3.selectAll('rect.time-block').classed('delete-mode', enable);
+}
+
+export function setFillMode(enable = true) {
+	mode = enable ? 'fill' : '';
+
+	if (enable) {
+
+		// dim normal time blocks and remove their hover effects
+		d3.selectAll('g.day').selectAll('rect.time-block')
+			.classed('no-hover', true)
+			.transition().duration(1000)
+			.style('opacity', 0.2);
+
+		// remove borders on day squares
+		d3.selectAll('rect.day').style('opacity', 0.0);
+
+		createEmptyBlocks();
+
+	} else {
+		toolbar.clearButtons();
+
+		// show borders on day squares and remove empty blocks
+		d3.selectAll('rect.day').style('opacity', 1.0);
+		d3.selectAll('rect.time-block-new').remove();
+
+		// undim normal time blocks and enable their hover effects again
+		const blockRects = d3.selectAll('rect.time-block');
+		blockRects.interrupt();
+		blockRects.style('opacity', 0.5).classed('no-hover', false);
+	}
+}
+
+function createEmptyBlocks() {
+	const dimensions = getDimensions();
+	const emptyBlocksSchedule = timeBlockService.getActiveWeeklySchedule().getEmptyTimeBlocks();
+
+	d3.selectAll('g.day').each(function(day, index) {
+
+		// create scale for the current day
+		const scale = d3.scaleTime()
+			.domain([moment().day(index).startOf('day').toDate(), moment().day(index).endOf('day').toDate()])
+			.range([0, dimensions.dayHeight]);
+
+		d3.select(this).selectAll('g.day-square').selectAll('rect.time-block-new')
+			.data(emptyBlocksSchedule.daysWithTimeBlocks[index].values)
+			.enter()
+			.append('rect')
+			.attr('class', 'time-block time-block-new')
+			.attr('x', 0)
+			.attr('y', timeBlock => scale(timeBlock.startTime))
+			.attr('width', dimensions.dayWidth)
+			.attr('height', timeBlock => scale(timeBlock.endTime) - scale(timeBlock.startTime))
+			.attr('rx', 8)
+			.attr('ry', 8)
+			.attr('stroke-dasharray', '10, 5')
+			.attr('stroke-dashoffset', '0%')
+			.attr('stroke-opacity', 1.0)
+			.attr('fill-opacity', 0.0)
+			.style('opacity', 1.0)
+			.each(function(datum) {
+				datum.animate = true;
+				animateDashes.call(this, datum);
+			})
+			.on('mouseover', function(datum) {
+				if (mode === 'fill') {
+					// disable animation and show rect fill
+					datum.animate = false;
+					d3.select(this).interrupt();
+					d3.select(this)
+						.transition().duration(400)
+						.attr('fill-opacity', 0.7);
+				}
+			})
+			.on('mouseout', function(datum) {
+				if (mode === 'fill') {
+					// enable animation and hide rect fill
+					datum.animate = true;
+					d3.select(this).interrupt();
+					d3.select(this)
+						.transition().duration(400)
+						.attr('fill-opacity', 0.0)
+						.on('end', animateDashes);
+				}
+			})
+			.on('click', function(block) {
+				mode = '';
+
+				// disable animation
+				block.animate = false;
+
+				// remove all other empty time block rects
+				const rect = this;
+				d3.selectAll('.time-block-new').each(function() {
+					if (this !== rect)
+						d3.select(this).remove();
+				});
+
+				// show add block modal w/clicked empty time block
+				timeBlockModal.show(
+					block,
+					'add',
+					() => { setFillMode(false); setWeeklyData(); },
+					() => setFillMode(false)
+				);
+			});
+	});
+}
+
+/** Animates dashed border around the svgElement assigned to 'this'.
+ * The animation repeats so long as the datum's 'animate' property is truthy. */
+function animateDashes(datum) {
+	if (datum && datum.animate) {
+		d3.select(this)
+			.transition()
+			.duration(15000)
+			.ease(d3.easeLinear)
+			.attr('stroke-dashoffset', '100%')
+			.transition()
+			.duration(15000)
+			.ease(d3.easeLinear)
+			.attr('stroke-dashoffset', '0%')
+			.on('end', function(datum) {
+				d3.select(this).attr('stroke-dashoffset', '0%');
+				animateDashes.call(this, datum);
+			});
+	}
 }
 
 function createBlockFromNewRect(svgElement, scale) {
@@ -234,7 +358,8 @@ function showAddBlockModal(newTimeBlock) {
 }
 
 function cancelBlockCreation() {
-	d3.select('.time-block-new').remove();
+	toolbar.clearButtons();
+	d3.selectAll('.time-block-new').remove();
 	d3.select('#track-line-bottom').attr('display', 'none');
 	d3.select('#track-text-bottom').attr('display', 'none');
 }
