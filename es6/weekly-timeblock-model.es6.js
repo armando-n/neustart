@@ -54,6 +54,10 @@ class WeeklyTimeBlock {
 		return WeeklyTimeBlock.days.indexOf(this.dayOfWeek);
 	}
 
+	set dayIndex(dayIndex) {
+		this.dayOfWeek = WeeklyTimeBlock.days[+dayIndex];
+	}
+
 	get startTime() {
 		return new Date(this.startMoment.toDate().valueOf());
 	}
@@ -68,6 +72,20 @@ class WeeklyTimeBlock {
 
 	get endMoment() {
 		return moment({hour: this.endHour, minute: this.endMinute}).day(this.dayIndex);
+	}
+
+	set startMoment(startMoment) {
+		if (!moment.isMoment(startMoment))
+			throw new Error('Invalid moment passed to WeeklyTimeBlock.startMoment');
+		this.startHour = startMoment.hour();
+		this.startMinute = startMoment.minute();
+	}
+
+	set endMoment(endMoment) {
+		if (!moment.isMoment(endMoment))
+			throw new Error('Invalid moment passed to WeeklyTimeBlock.endMoment');
+		this.endHour = endMoment.hour();
+		this.endMinute = endMoment.minute();
 	}
 
 	get type() {

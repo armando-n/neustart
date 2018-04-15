@@ -88,6 +88,125 @@ export class WeeklySchedule {
 		return this.daysWithTimeBlocks[dayIndex].values[blockIndex];
 	}
 
+	/** Copies the given time block to each day indicated by the dayIndexes rest parameter.
+	 * The overwrite flag determines whether or not the copied block will overwrite existing
+	 * blocks when overlap occurs. Any blocks deleted during this process are returned in an
+	 * array. Any new blocks created during this process can be identified by their lack of a blockID. */
+	copyBlock(timeBlock, overwrite = true, ...dayIndexes) {
+		const deletedBlocks = [];
+
+		// copy time block to each day of the week matching the given dayIndexes
+		dayIndexes.forEach(dayIndex => {
+			const addCopyBlock = true;
+			const day = this.daysWithTimeBlocks[dayIndex];
+			const copyBlock = new WeeklyTimeBlock(timeBlock);
+			copyBlock.blockID = undefined;
+			copyBlock.dayIndex = dayIndex;
+
+			// adjust time blocks and copy block for the day as needed
+			for (let blockIndex = day.values.length-1; blockIndex >= 0; blockIndex--) {
+				const currentBlock = day.values[blockIndex];
+
+				// copy block completely encompasses current block
+				if (
+					copyBlock.startMoment.isBefore(currentBlock.startMoment, 'minute') && (
+						copyBlock.endMoment.isAfter(currentBlock.endMoment, 'minute') ||
+						copyBlock.endMoment.isSame(currentBlock.endMoment, 'minute')
+					)
+				) {
+					if (overwrite) {
+						// delete current block
+						deletedBlocks.push(this.daysWithTimeBlocks[dayIndex].values.splice(blockIndex, 1));
+					} else {
+						// create a new block from current block end time to copy block end time (or don't, if they're the same)
+						if (!currentBlock.endMoment.isSame(copyBlock.endMoment, 'minute')) {
+							const newBlock = new WeeklyTimeBlock(copyBlock);
+							newBlock.blockID = undefined;
+							newBlock.startMoment = currentBlock.endMoment;
+							newBlock.endMoment = copyBlock.endMoment;
+
+							this.daysWithTimeBlocks[dayIndex].values.push(newBlock);                  // TODO this will need to be added to the database somehow/somewhen
+						}
+
+						// move copy block end time to current block start time
+						copyBlock.endMoment = currentBlock.startMoment;
+					}
+				}
+
+				// copy block overlaps beginning section of current block
+				else if (
+					(
+						copyBlock.startMoment.isBefore(currentBlock.startMoment, 'minute') ||
+						copyBlock.startMoment.isSame(currentBlock.startMoment, 'minute')
+					) &&
+					copyBlock.endMoment.isAfter(currentBlock.startMoment, 'minute') &&
+					copyBlock.endMoment.isBefore(currentBlock.endMoment, 'minute')
+				) {
+					if (overwrite) {
+						// move current block start time to copy block end time (or delete current block if doing so would make it's start time >= it's end time)
+						if (!copyBlock.endMoment.isSame(currentBlock.endMoment, 'minute') && !copyBlock.endMoment.isAfter(currentBlock.endMoment, 'minute'))
+							currentBlock.startMoment = copyBlock.endMoment;
+						else
+							deletedBlocks.push(this.daysWithTimeBlocks[dayIndex].values.splice(blockIndex, 1));
+					} else {
+						// move copy block end time to current block start time
+						copyBlock.endMoment = currentBlock.startMoment;
+					}
+				}
+
+				// copy block overlaps middle section of current block
+				else if (
+					copyBlock.startMoment.isAfter(currentBlock.startMoment, 'minute') &&
+					copyBlock.startMoment.isBefore(currentBlock.endMoment, 'minute') &&
+					copyBlock.endMoment.isBefore(currentBlock.endMoment, 'minute')
+				) {
+					if (overwrite) {
+						// create a new block from copy block end time to current block end time
+						const newBlock = new WeeklyTimeBlock(currentBlock);
+						newBlock.blockID = undefined;
+						newBlock.startMoment = copyBlock.endMoment;
+						newBlock.endMoment = currentBlock.endMoment;
+						this.daysWithTimeBlocks[dayIndex].values.push(newBlock);                  // TODO this will need to be added to the database somehow/somewhen
+
+						// move current block end time to copy block start time
+						currentBlock.endMoment = copyBlock.startMoment;
+					} else {
+						// delete copy block (this makes single-block copy not occur at all)
+						addCopyBlock = false;
+					}
+
+					// no more time blocks need to be checked for overlap for the day - this would be the last one
+					break;
+				}
+
+				// copy block overlaps end section of current block
+				else if (
+					copyBlock.startMoment.isAfter(currentBlock.startMoment, 'minute') &&
+					copyBlock.startMoment.isBefore(currentBlock.endMoment, 'minute') &&
+					copyBlock.endMoment.isAfter(currentBlock.endMoment, 'minute')
+				) {
+					if (overwrite) {
+						// move current block end time to copy block start time
+						currentBlock.endMoment = copyBlock.startMoment;
+					} else {
+						// move copy block start time to current block end time
+						copyBlock.startMoment = currentBlock.endMoment;
+					}
+
+					// no more time blocks need to be checked for overlap for the day - this would be the last one
+					break;
+				}
+			}
+
+			if (addCopyBlock) {
+				this.daysWithTimeBlocks[dayIndex].values.push(copyBlock);
+				this.daysWithTimeBlocks[dayIndex].values.sort(comparator);
+			}
+		});
+
+		return deletedBlocks;
+	}
+
 	/** Returns top & bottom boundaries (as moments) for the time block with the given ID.
 	 * These boundaries indicate the extent to which the time block can grow
 	 * before running either into another time block, or running off the day. */
