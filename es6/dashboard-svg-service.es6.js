@@ -348,6 +348,7 @@ function showDaySelectionMode(...excludeDayIndexes) {
 					.attr('stroke-width', 1)
 					.attr('fill', '#eeeeee')
 					.attr('fill-opacity', 0.7)
+					.style('cursor', 'pointer')
 					.on('mouseover', function(day) {
 						day.animate = true;
 						d3.select(this.parentNode.parentNode).raise();
@@ -772,7 +773,7 @@ function timeBlockClicked(timeBlock) {
 
 		case 'copy':
 			d3.select(this.parentNode).selectAll('.time-block:not(.selected)')
-				.classed('no-hover, true');
+				.classed('no-hover', true);
 			d3.select(this).classed('selected', true);
 			showMessage('Click a day to paste to');
 			showDaySelectionMode(timeBlock.dayIndex);
