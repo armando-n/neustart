@@ -204,6 +204,19 @@ export function createSvg(weeklySchedule) {
 		.attr('height', dimensions.dayHeight);
 }
 
+export function setCopyMode(enable = true) {
+	mode = enable ? 'copy' : '';
+
+	if (enable) {
+		showMessage('Select a time block to copy');
+	} else {
+		d3.selectAll('rect.day-select').remove();
+		d3.select('rect.time-block.selected').classed('selected', false);
+		d3.selectAll('rect.time-block.copy').remove();
+		toolbar.clearButtons();
+	}
+}
+
 export function setDeleteMode(enable = true) {
 	mode = enable ? 'delete' : '';
 	d3.selectAll('rect.time-block').classed('delete-mode', enable);
@@ -237,6 +250,10 @@ export function setFillMode(enable = true) {
 		blockRects.interrupt();
 		blockRects.style('opacity', 0.5).classed('no-hover', false);
 	}
+}
+
+function showMessage(message) {
+	document.getElementById('messages-to-user').textContent = message;
 }
 
 function createEmptyBlocks() {
@@ -276,7 +293,7 @@ function createEmptyBlocks() {
 					datum.animate = false;
 					d3.select(this).interrupt();
 					d3.select(this)
-						.transition().duration(400)
+						.transition().duration(200)
 						.attr('fill-opacity', 0.7);
 				}
 			})
@@ -286,7 +303,7 @@ function createEmptyBlocks() {
 					datum.animate = true;
 					d3.select(this).interrupt();
 					d3.select(this)
-						.transition().duration(400)
+						.transition().duration(200)
 						.attr('fill-opacity', 0.0)
 						.on('end', animateDashes);
 				}
@@ -315,6 +332,63 @@ function createEmptyBlocks() {
 	});
 }
 
+function showDaySelectionMode(...excludeDayIndexes) {
+	const dimensions = getDimensions();
+	d3.selectAll('g.day-square')
+		.each(function(day) {
+			if (excludeDayIndexes.indexOf(day.index) === -1) {
+				d3.select(this)
+					.append('rect')
+					.attr('class', 'day-select')
+					.attr('x', 0)
+					.attr('y', 0)
+					.attr('width', dimensions.dayWidth)
+					.attr('height', dimensions.dayHeight)
+					.attr('stroke', 'black')
+					.attr('stroke-width', 1)
+					.attr('fill', '#eeeeee')
+					.attr('fill-opacity', 0.7)
+					.on('mouseover', function(day) {
+						day.animate = true;
+						d3.select(this.parentNode.parentNode).raise();
+						d3.select(this)
+							.attr('stroke', '#57e057')
+							.attr('stroke-width', 3);
+						animateStroke.call(this, day);
+					})
+					.on('mouseout', function(day) {
+						day.animate = false;
+						d3.select(this).interrupt();
+						d3.select(this)
+							.attr('stroke-width', 1)
+							.attr('stroke', 'black');
+					})
+					.on('click', function(day) {
+						day.animate = false;
+						// d3.select(this).attr('fill', '#57aa57');
+						const dimensions = getDimensions();
+
+						// create new rect on top of selected time block, then animate it to move to the selected day
+						const rectToCopy = d3.select('rect.time-block.selected');
+						const sourceDayIndex = rectToCopy.datum().dayIndex;
+						const sourceDaySquare = d3.select(rectToCopy.node().parentNode);
+						const targetDaySquare = d3.select(this.parentNode);
+						const targetDayIndex = day.index;
+						const copyRect = rectToCopy.node().cloneNode(true);
+						const daysAway = sourceDayIndex - targetDayIndex;
+
+						d3.select(copyRect)
+							.classed('copy', true)
+							.attr('x', daysAway * dimensions.dayWidth);
+
+						targetDaySquare.node().appendChild(copyRect);
+						d3.select(copyRect).transition().duration(1250).ease(d3.easeCubic)
+							.attr('x', 0);
+					});
+			}
+		})
+}
+
 /** Animates dashed border around the svgElement assigned to 'this'.
  * The animation repeats so long as the datum's 'animate' property is truthy. */
 function animateDashes(datum) {
@@ -332,6 +406,19 @@ function animateDashes(datum) {
 				d3.select(this).attr('stroke-dashoffset', '0%');
 				animateDashes.call(this, datum);
 			});
+	}
+}
+
+function animateStroke(datum) {
+	if (datum.animate) {
+		d3.select(this)
+			.transition().duration(200).ease(d3.easeBack)
+			// .attr('stroke-width', 1)
+			.attr('stroke', '#57aa57')
+			.transition().duration(200).ease(d3.easeBack)
+			// .attr('stroke-width', 3)
+			.attr('stroke', '#57e057')
+			.on('end', animateStroke);
 	}
 }
 
@@ -683,8 +770,16 @@ function timeBlockClicked(timeBlock) {
 			confirmModal.show(deleteBlock, cancelDelete);
 			break;
 
+		case 'copy':
+			d3.select(this.parentNode).selectAll('.time-block:not(.selected)')
+				.classed('no-hover, true');
+			d3.select(this).classed('selected', true);
+			showMessage('Click a day to paste to');
+			showDaySelectionMode(timeBlock.dayIndex);
+			break;
+
 		// show edit time block modal
-		default:
+		case '':
 			timeBlockModal.show(timeBlock, 'edit', setWeeklyData);
 	}
 }

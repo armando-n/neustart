@@ -12,7 +12,7 @@ function init() {
 	document.getElementById('toolbar-add').addEventListener('click', addClicked);
 	Array.from(document.querySelectorAll('#toolbar-buttons button'))
 		.forEach(button => {
-			if (button.textContent !== 'Fill')
+			if (button.textContent !== 'Fill' && button.textContent !== 'Copy')
 				button.addEventListener('click', toggleButton)
 		});
 }
@@ -43,7 +43,12 @@ function fillClicked() {
 }
 
 function copyClicked() {
-	console.log('copy clicked');
+	const enableCopy = !this.classList.contains('pressed');
+	if (enableCopy)
+		this.classList.add('pressed');
+	else
+		this.classList.remove('pressed');
+	svgService.setCopyMode(enableCopy);
 }
 
 function deleteClicked() {

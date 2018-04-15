@@ -30,6 +30,8 @@ class DashboardView {
 			</div>
 		</div>
 
+		<div id="messages-to-user"></div>
+
 		<div class="svg-wrapper">
 			<svg id="svg">
 				<defs>
@@ -61,11 +63,11 @@ class DashboardView {
 			<fieldset>
 				<div class="input-group">
 					<label for="startTime" class="time-label">Start</label>
-					<input id="startTime" type="time" name="startTime" size="8" autofocus="autofocus" required="required" maxlength="12" pattern="^([0]?[1-9]|[1][0-2])$" title="Enter a valid time (HH:MM XM)" />
+					<input id="startTime" type="time" name="startTime" size="8" required="required" title="Enter a valid time (HH:MM XM)" />
 				</div>
 				<div class="input-group">
 					<label for="endTime" class="time-label">End</label>
-					<input id="endTime" type="time" name="endTime" size="8" autofocus="autofocus" required="required" maxlength="12" pattern="^([0]?[1-9]|[1][0-2])$" title="Enter a valid time (HH:MM XM)" />
+					<input id="endTime" type="time" name="endTime" size="8" required="required" title="Enter a valid time (HH:MM XM)" />
 				</div>
 			</fieldset>
 			<fieldset>

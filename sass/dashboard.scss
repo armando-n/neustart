@@ -63,6 +63,14 @@ $block-bright-red: #f185a8;
 	}
  }
 
+ /* Message area Styles */
+ #messages-to-user {
+	 background: $bg-color;
+	 margin-top: 0.5rem;
+	 margin-bottom: 0.5rem;
+	 text-align: center;
+ }
+
 /* SVG Styles */
 
 #svg {
@@ -145,6 +153,7 @@ $block-bright-red: #f185a8;
 			fill: url(#radial-gradiant-text-and-call);
 			&.delete-mode:hover { fill: $block-bright-red }
 			&.no-hover { cursor: default }
+			&.selected { fill: $block-bright-green }
 		}
 		&.text-and-call:hover:not(.no-hover) { fill: $block-bright-green }
 
@@ -153,6 +162,7 @@ $block-bright-red: #f185a8;
 			fill: url(#radial-gradiant-text-only);
 			&.delete-mode:hover { fill: $block-bright-red }
 			&.no-hover { cursor: default }
+			&.selected { fill: $block-bright-blue }
 		}
 		&.text-only:hover:not(.no-hover) { fill: $block-bright-blue }
 
@@ -161,6 +171,7 @@ $block-bright-red: #f185a8;
 			fill: url(#radial-gradiant-call-only);
 			&.delete-mode:hover { fill: $block-bright-red }
 			&.no-hover { cursor: default }
+			&.selected { fill: $block-bright-yellow }
 		}
 		&.call-only:hover:not(.no-hover) { fill: $block-bright-yellow }
 
@@ -169,6 +180,7 @@ $block-bright-red: #f185a8;
 			fill: #ba5776;
 			cursor: default;
 			&.no-hover { cursor: default }
+			&.selected { fill: $block-bright-red }
 		}
 		&.no-text-or-call:hover:not(.no-hover) { fill: $block-bright-red }
 	}

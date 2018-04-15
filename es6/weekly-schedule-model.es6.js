@@ -30,7 +30,10 @@ export class WeeklySchedule {
 				rawTimeBlocks = rawTimeBlocks.map(validateBlock);
 
 				// group time blocks by day of week
-				daysWithTimeBlocks = d3.nest().key(rawBlock => rawBlock.dayOfWeek).entries(rawTimeBlocks);
+				daysWithTimeBlocks = d3.nest()
+					.key(rawBlock => rawBlock.dayOfWeek)
+					.entries(rawTimeBlocks);
+				daysWithTimeBlocks.forEach((day, index) => day.index = index);
 			}
 
 		}
@@ -97,7 +100,7 @@ export class WeeklySchedule {
 
 		// copy time block to each day of the week matching the given dayIndexes
 		dayIndexes.forEach(dayIndex => {
-			const addCopyBlock = true;
+			let addCopyBlock = true;
 			const day = this.daysWithTimeBlocks[dayIndex];
 			const copyBlock = new WeeklyTimeBlock(timeBlock);
 			copyBlock.blockID = undefined;
