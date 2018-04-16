@@ -94,7 +94,8 @@ export class WeeklySchedule {
 	/** Copies the given time block to each day indicated by the dayIndexes rest parameter.
 	 * The overwrite flag determines whether or not the copied block will overwrite existing
 	 * blocks when overlap occurs. Any blocks deleted during this process are returned in an
-	 * array. Any new blocks created during this process can be identified by their lack of a blockID. */
+	 * array. Any new blocks created during this process can be identified by their lack of
+	 * a blockID.  Use findUnidentifiedBlocks() method to easily access them. */
 	copyBlock(timeBlock, overwrite = true, ...dayIndexes) {
 		const deletedBlocks = [];
 
@@ -102,9 +103,7 @@ export class WeeklySchedule {
 		dayIndexes.forEach(dayIndex => {
 			let addCopyBlock = true;
 			const day = this.daysWithTimeBlocks[dayIndex];
-			const copyBlock = new WeeklyTimeBlock(timeBlock);
-			copyBlock.blockID = undefined;
-			copyBlock.dayIndex = dayIndex;
+			const copyBlock = timeBlock.copy();
 
 			// adjust time blocks and copy block for the day as needed
 			for (let blockIndex = day.values.length-1; blockIndex >= 0; blockIndex--) {
@@ -208,6 +207,20 @@ export class WeeklySchedule {
 		});
 
 		return deletedBlocks;
+	}
+
+	/** Returns an array containing any time blocks found in this schedule that have no block ID. */
+	findUnidentifiedBlocks() {
+		const unidentifiedBlocks = [];
+		
+		for (let day of this.daysWithTimeBlocks) {
+			for (let block of day.values) {
+				if (!block.blockID)
+					unidentifiedBlocks.push(block);
+			}
+		}
+
+		return unidentifiedBlocks;
 	}
 
 	/** Returns top & bottom boundaries (as moments) for the time block with the given ID.

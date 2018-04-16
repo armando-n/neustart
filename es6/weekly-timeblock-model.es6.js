@@ -51,13 +51,13 @@ class WeeklyTimeBlock {
 	}
 
 	copy(dayIndex) {
-		const copiedData = new WeeklyTimeBlock(this);
+		const blockCopy = new WeeklyTimeBlock(this);
 
-		copiedData.blockID = undefined;
+		blockCopy.blockID = undefined;
 		if (dayIndex !== undefined)
-			copiedData.dayIndex = +dayIndex;
+			blockCopy.dayIndex = +dayIndex;
 
-		return copiedData;
+		return blockCopy;
 	}
 
 	clone() {

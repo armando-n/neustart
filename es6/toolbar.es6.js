@@ -93,7 +93,7 @@ function cancelClicked() {
 }
 
 function pasteClicked() {
-	
+	svgService.completeCopyMode();
 }
 
 function deleteClicked() {

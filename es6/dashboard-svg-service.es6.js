@@ -223,7 +223,9 @@ export function setCopyMode(enable = true) {
 export function completeCopyMode() {
 	mode = '';
 
-	
+	console.log('completeCopyMode data');
+	console.log(d3.selectAll('rect.time-block.copy').data());
+	d3.selectAll('rect.time-block.copy').data();
 }
 
 export function setDeleteMode(enable = true) {
@@ -394,9 +396,9 @@ function showDaySelectionMode(...excludeDayIndexes) {
 console.log('rectToCopy.datum()');
 console.log(rectToCopy.datum());
 
+							// bind a copy of the time block to the new rect
 							const copyRect = rectToCopy.node().cloneNode(true);
-							const blockToCopy = rectToCopy.datum();
-							const copyBlock = blockToCopy.copy(targetDayIndex);
+							const copyBlock = rectToCopy.datum().copy(targetDayIndex);
 							d3.select(copyRect).datum(copyBlock);
 
 console.log('copyRect.datum()');

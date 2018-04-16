@@ -48,3 +48,7 @@ export function remove(timeBlock) {
 	// return modified weekly schedule
 	return getActiveWeeklySchedule();
 }
+
+export function paste(blocksToCopy, overwrite = false) {
+	
+}
