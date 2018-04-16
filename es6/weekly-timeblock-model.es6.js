@@ -50,6 +50,21 @@ class WeeklyTimeBlock {
 		this.repeatCallDuration = repeatCallDuration;
 	}
 
+	copy(dayIndex) {
+		const copiedData = new WeeklyTimeBlock(this);
+
+		copiedData.blockID = undefined;
+		if (dayIndex !== undefined)
+			copiedData.dayIndex = +dayIndex;
+
+		return copiedData;
+	}
+
+	clone() {
+		console.log('WeeklyTimeBlock.clone');
+		return new WeeklyTimeBlock(this);
+	}
+
 	get dayIndex() {
 		return WeeklyTimeBlock.days.indexOf(this.dayOfWeek);
 	}

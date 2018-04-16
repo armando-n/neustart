@@ -210,11 +210,20 @@ export function setCopyMode(enable = true) {
 	if (enable) {
 		showMessage('Select a time block to copy');
 	} else {
+		showMessage('');
 		d3.selectAll('rect.day-select').remove();
 		d3.select('rect.time-block.selected').classed('selected', false);
+		d3.selectAll('rect.time-block.no-hover').classed('no-hover', false);
+		d3.selectAll('g.day').each(datum => datum.selected = false);
 		d3.selectAll('rect.time-block.copy').remove();
 		toolbar.clearButtons();
 	}
+}
+
+export function completeCopyMode() {
+	mode = '';
+
+	
 }
 
 export function setDeleteMode(enable = true) {
@@ -350,41 +359,67 @@ function showDaySelectionMode(...excludeDayIndexes) {
 					.attr('fill-opacity', 0.7)
 					.style('cursor', 'pointer')
 					.on('mouseover', function(day) {
+						
 						day.animate = true;
+						const strokeColor = day.selected ? '#f185a8' : '#57e057';
 						d3.select(this.parentNode.parentNode).raise();
 						d3.select(this)
-							.attr('stroke', '#57e057')
+							.attr('stroke', strokeColor)
 							.attr('stroke-width', 3);
 						animateStroke.call(this, day);
 					})
 					.on('mouseout', function(day) {
 						day.animate = false;
+						const strokeColor = day.selected ? '#57e057' : 'black';
+						const strokeWidth = day.selected ? 3 : 1;
 						d3.select(this).interrupt();
 						d3.select(this)
-							.attr('stroke-width', 1)
-							.attr('stroke', 'black');
+							.attr('stroke-width', strokeWidth)
+							.attr('stroke', strokeColor);
 					})
 					.on('click', function(day) {
-						day.animate = false;
-						// d3.select(this).attr('fill', '#57aa57');
-						const dimensions = getDimensions();
+						if (!day.selected) {
+							day.selected = true;
+							day.animate = false;
+							// d3.select(this).attr('fill', '#57aa57');
+							const dimensions = getDimensions();
 
-						// create new rect on top of selected time block, then animate it to move to the selected day
-						const rectToCopy = d3.select('rect.time-block.selected');
-						const sourceDayIndex = rectToCopy.datum().dayIndex;
-						const sourceDaySquare = d3.select(rectToCopy.node().parentNode);
-						const targetDaySquare = d3.select(this.parentNode);
-						const targetDayIndex = day.index;
-						const copyRect = rectToCopy.node().cloneNode(true);
-						const daysAway = sourceDayIndex - targetDayIndex;
+							// create new rect on top of selected time block, then animate it to move to the selected day
+							const rectToCopy = d3.select('rect.time-block.selected');
+							const sourceDayIndex = rectToCopy.datum().dayIndex;
+							const sourceDaySquare = d3.select(rectToCopy.node().parentNode);
+							const targetDaySquare = d3.select(this.parentNode);
+							const targetDayIndex = day.index;
 
-						d3.select(copyRect)
-							.classed('copy', true)
-							.attr('x', daysAway * dimensions.dayWidth);
+console.log('rectToCopy.datum()');
+console.log(rectToCopy.datum());
 
-						targetDaySquare.node().appendChild(copyRect);
-						d3.select(copyRect).transition().duration(1250).ease(d3.easeCubic)
-							.attr('x', 0);
+							const copyRect = rectToCopy.node().cloneNode(true);
+							const blockToCopy = rectToCopy.datum();
+							const copyBlock = blockToCopy.copy(targetDayIndex);
+							d3.select(copyRect).datum(copyBlock);
+
+console.log('copyRect.datum()');
+							
+
+console.log(d3.select(copyRect).datum());
+
+							const daysAway = sourceDayIndex - targetDayIndex;
+
+							d3.select(copyRect)
+								.classed('copy', true)
+								.attr('x', daysAway * dimensions.dayWidth);
+
+							targetDaySquare.node().appendChild(copyRect);
+							d3.select(copyRect).transition().duration(1250).ease(d3.easeCubic)
+								.attr('x', 0);
+						} else {
+							day.selected = false;
+							d3.select(this.parentNode).select('rect.copy')
+								.transition().duration(750).ease(d3.easeCubic)
+								.style('opacity', 0.0)
+								.remove();
+						}
 					});
 			}
 		})
@@ -412,13 +447,15 @@ function animateDashes(datum) {
 
 function animateStroke(datum) {
 	if (datum.animate) {
+		const darkColor = datum.selected ? '#5f1d32' : '#57aa57';
+		const brightColor = datum.selected ? '#f185a8' : '#57e057';
 		d3.select(this)
 			.transition().duration(200).ease(d3.easeBack)
 			// .attr('stroke-width', 1)
-			.attr('stroke', '#57aa57')
+			.attr('stroke', darkColor)
 			.transition().duration(200).ease(d3.easeBack)
 			// .attr('stroke-width', 3)
-			.attr('stroke', '#57e057')
+			.attr('stroke', brightColor)
 			.on('end', animateStroke);
 	}
 }
@@ -772,11 +809,14 @@ function timeBlockClicked(timeBlock) {
 			break;
 
 		case 'copy':
-			d3.select(this.parentNode).selectAll('.time-block:not(.selected)')
-				.classed('no-hover', true);
-			d3.select(this).classed('selected', true);
-			showMessage('Click a day to paste to');
-			showDaySelectionMode(timeBlock.dayIndex);
+			if (d3.select('g.day-square rect.time-block.selected').empty()) {
+				toolbar.showPasteButtons();
+				d3.select(this.parentNode).selectAll('.time-block:not(.selected)')
+					.classed('no-hover', true);
+				d3.select(this).classed('selected', true);
+				showMessage('Select days to paste to');
+				showDaySelectionMode(timeBlock.dayIndex);
+			}
 			break;
 
 		// show edit time block modal

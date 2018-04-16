@@ -13,8 +13,10 @@ class DashboardView {
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
 	<title>Neustart | Dashboard</title>
-	<script src="https://d3js.org/d3.v4.min.js"></script>
-	<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.22.0/moment.min.js"></script>
+	<!-- <script src="https://d3js.org/d3.v4.min.js"></script> -->
+	<script src="/js/d3.v4.min.js"></script>
+	<script src="/js/moment.min.js"></script>
+	<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.22.0/moment.min.js"></script> -->
 	<link rel="stylesheet" href="/css/dashboard.css" type="text/css" />
 </head>
 <body>
@@ -24,6 +26,8 @@ class DashboardView {
 			<div id="toolbar-buttons">
 				<button id="toolbar-fill" class="toggle-button" type="button">Fill</button>
 				<button id="toolbar-copy" class="toggle-button" type="button">Copy</button>
+				<button id="toolbar-cancel" class="toggle-button" type="button">Cancel</button>
+				<button id="toolbar-paste" class="toggle-button" type="button">Paste</button>
 				<button id="toolbar-delete" class="toggle-button" type="button">Delete</button>
 				<button id="toolbar-split" class="toggle-button" type="button">Split</button>
 				<button id="toolbar-add" class="toggle-button" type="button">Add</button>

@@ -47,6 +47,11 @@ $block-bright-red: #f185a8;
 
 	#toolbar-buttons {
 		display: inline-block;
+
+		#toolbar-cancel, #toolbar-paste {
+			display: none;
+		}
+
 		button {
 			background: transparent;
 			color: $toolbar-text-color;
