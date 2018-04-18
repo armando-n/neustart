@@ -1,4 +1,5 @@
-$bg-color: #eeeeee;
+$bg-color: #111111;
+$fg-color: #eeeeee;
 $highlight-color: #2371ee;
 $highlight-border-color: #438bff;
 $toolbar-border-color: #0c4eb7;
@@ -33,6 +34,7 @@ $block-bright-red: #f185a8;
 
  body {
 	 background: $bg-color;
+	 color: $fg-color;
 	 margin-top: 0;
  }
 
@@ -48,7 +50,7 @@ $block-bright-red: #f185a8;
 	#toolbar-buttons {
 		display: inline-block;
 
-		#toolbar-cancel, #toolbar-paste {
+		#toolbar-cancel, #toolbar-paste, #copy-overwrite, label[for='copy-overwrite'] {
 			display: none;
 		}
 
@@ -92,18 +94,19 @@ $block-bright-red: #f185a8;
 			stroke: $fun-blue;
 			stroke-width: 2;
 		}
-		text {
-			@extend .noselect;
-			fill: $fun-blue;
-		}
-		rect.track-text-border {
-			fill: #1f1f1f;
-			fill-opacity: 0.85;
-			stroke: #1853ac;
-			stroke-width: 2;
-			rx: 6;
-			ry: 6;
-		}
+	}
+
+	.tooltip-text {
+		@extend .noselect;
+		fill: $fun-blue;
+	}
+	.tooltip-border {
+		fill: #1f1f1f;
+		fill-opacity: 0.85;
+		stroke: #1853ac;
+		stroke-width: 2;
+		rx: 6;
+		ry: 6;
 	}
 
 	g.axis text {

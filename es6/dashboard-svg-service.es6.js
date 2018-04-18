@@ -74,24 +74,26 @@ export function createSvg(weeklySchedule) {
 		.attr('display', 'none');
 	const trackTextBorder = mouseTrackingG.append('rect')
 		.attr('id', 'track-text-border-top')
-		.attr('class', 'track-text-border')
+		.attr('class', 'tooltip-border')
 		.attr('x', 0).attr('y', 0)
 		.attr('width', 0).attr('height', 0)
 		.attr('display', 'none');
 	const trackText = mouseTrackingG.append('text')
 		.attr('id', 'track-text-top')
+		.attr('class', 'tooltip-text')
 		.attr('x', 0)
 		.attr('y', 0)
 		.attr('text-anchor', 'middle')
 		.attr('display', 'none');
 	const trackTextBorderBottom = mouseTrackingG.append('rect')
 		.attr('id', 'track-text-border-bottom')
-		.attr('class', 'track-text-border')
+		.attr('class', 'tooltip-border')
 		.attr('x', 0).attr('y', 0)
 		.attr('width', 0).attr('height', 0)
 		.attr('display', 'none');
 	const trackTextBottom = mouseTrackingG.append('text')
 		.attr('id', 'track-text-bottom')
+		.attr('class', 'tooltip-text')
 		.attr('x', 0)
 		.attr('y', 0)
 		.attr('text-anchor', 'middle')
@@ -216,6 +218,10 @@ export function setCopyMode(enable = true) {
 		d3.selectAll('rect.time-block.no-hover').classed('no-hover', false);
 		d3.selectAll('g.day').each(datum => datum.selected = false);
 		d3.selectAll('rect.time-block.copy').remove();
+		d3.selectAll('g.day-square > .copy-tooltip').each(function() {
+			d3.select(this).selectAll('*').remove();
+			d3.select(this).remove();
+		});
 		toolbar.clearButtons();
 	}
 }
@@ -223,9 +229,18 @@ export function setCopyMode(enable = true) {
 export function completeCopyMode() {
 	mode = '';
 
-	console.log('completeCopyMode data');
-	console.log(d3.selectAll('rect.time-block.copy').data());
-	d3.selectAll('rect.time-block.copy').data();
+	// console.log('completeCopyMode data');
+	// console.log(d3.selectAll('rect.time-block.copy').data());
+	// d3.selectAll('rect.time-block.copy').data();
+
+	const dayIndexesToCopyTo = [];
+	d3.selectAll('g.day').each(function(day, index) {
+		const copies = d3.select(this).select('rect.time-block.copy');
+		if (!copies.empty())
+			dayIndexesToCopyTo.push(index);
+	});
+
+	// TODO overwrite value needed
 }
 
 export function setDeleteMode(enable = true) {
@@ -392,19 +407,20 @@ function showDaySelectionMode(...excludeDayIndexes) {
 							const sourceDaySquare = d3.select(rectToCopy.node().parentNode);
 							const targetDaySquare = d3.select(this.parentNode);
 							const targetDayIndex = day.index;
+							const copyRect = rectToCopy.node().cloneNode(true);
+							d3.select(copyRect).datum({ index: targetDayIndex });
 
-console.log('rectToCopy.datum()');
-console.log(rectToCopy.datum());
+// console.log('rectToCopy.datum()');
+// console.log(rectToCopy.datum());
 
 							// bind a copy of the time block to the new rect
-							const copyRect = rectToCopy.node().cloneNode(true);
-							const copyBlock = rectToCopy.datum().copy(targetDayIndex);
-							d3.select(copyRect).datum(copyBlock);
+							// const copyBlock = rectToCopy.datum().copy(targetDayIndex);
+							// d3.select(copyRect).datum(copyBlock);
 
-console.log('copyRect.datum()');
+// console.log('copyRect.datum()');
 							
 
-console.log(d3.select(copyRect).datum());
+// console.log(d3.select(copyRect).datum());
 
 							const daysAway = sourceDayIndex - targetDayIndex;
 
@@ -413,11 +429,78 @@ console.log(d3.select(copyRect).datum());
 								.attr('x', daysAway * dimensions.dayWidth);
 
 							targetDaySquare.node().appendChild(copyRect);
-							d3.select(copyRect).transition().duration(1250).ease(d3.easeCubic)
-								.attr('x', 0);
+							d3.select(copyRect)
+								.transition().duration(1250).ease(d3.easeCubic)
+								.attr('x', 0)
+								.on('end', function() {
+									const paddingV = 2.5;
+									const paddingH = 5;
+									const daySquare = d3.select(this.parentNode);
+
+									// create overwrite checkbox for each copied block
+									// const tooltipG = d3.select(this.parentNode).append('g');
+									const tooltipG = daySquare.append('g')
+										.attr('class', 'copy-tooltip')
+										.style('cursor', 'pointer')
+										.on('click', () => console.log('group clicked'));
+									const tooltipBorder = tooltipG.append('rect');
+									const overwriteText = tooltipG.append('text');
+									const checkbox = tooltipG.append('rect');
+									d3.select(this).raise();
+
+									// text
+									overwriteText
+										.attr('class', 'tooltip-text')
+										.style('font-size', '0.75rem')
+										.attr('text-anchor', 'middle')
+										.text('Overwrite');
+									let textBBox = overwriteText.node().getBBox();
+									overwriteText
+										.style('opacity', 0.0)
+										.attr('x', dimensions.dayWidth/2)
+										.attr('y', +d3.select(this).attr('y') + textBBox.height + paddingV*2);
+									overwriteText.transition().duration(350).ease(d3.easeSin)
+										.style('opacity', 1.0)
+										.attr('y', +d3.select(this).attr('y') - paddingV*4);
+
+									// border
+									textBBox = overwriteText.node().getBBox();
+									tooltipBorder
+										.attr('class', 'tooltip-border')
+										.style('opacity', 0.0)
+										.attr('x', textBBox.x - paddingH - 16)
+										.attr('y', textBBox.y - paddingV)
+										.attr('width', textBBox.width + paddingH*2 + 16)
+										.attr('height', textBBox.height + paddingV*2);
+									tooltipBorder
+										.transition().duration(350).ease(d3.easeSin)
+										.style('opacity', 1.0)
+										.attr('y', textBBox.y - paddingV*7 - textBBox.height);
+
+
+									// checkbox
+									checkbox
+										.style('opacity', 0.0)
+										.attr('x', textBBox.x - 16)
+										.attr('y', +d3.select(this).attr('y') + textBBox.height + paddingV*2 - 10.5)
+										.attr('width', 12.5).attr('height', 12.5)
+										.attr('fill', '#4286f4')
+										.attr('rx', 2).attr('ry', 2)
+										.attr('stroke', '#2d4468')
+										.attr('stroke-width', 1);
+									checkbox
+										.transition().duration(350).ease(d3.easeSin)
+										.style('opacity', 1.0)
+										.attr('y', +d3.select(this).attr('y') - paddingV*4 - 10.5);
+								});
 						} else {
 							day.selected = false;
-							d3.select(this.parentNode).select('rect.copy')
+							const daySquare = d3.select(this.parentNode);
+							daySquare.select('rect.copy')
+								.transition().duration(750).ease(d3.easeCubic)
+								.style('opacity', 0.0)
+								.remove();
+							daySquare.select('g.copy-tooltip')
 								.transition().duration(750).ease(d3.easeCubic)
 								.style('opacity', 0.0)
 								.remove();

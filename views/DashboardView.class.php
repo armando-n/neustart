@@ -28,6 +28,8 @@ class DashboardView {
 				<button id="toolbar-copy" class="toggle-button" type="button">Copy</button>
 				<button id="toolbar-cancel" class="toggle-button" type="button">Cancel</button>
 				<button id="toolbar-paste" class="toggle-button" type="button">Paste</button>
+				<input id="copy-overwrite" type="checkbox">
+				<label for="copy-overwrite">Overwrite all</label>
 				<button id="toolbar-delete" class="toggle-button" type="button">Delete</button>
 				<button id="toolbar-split" class="toggle-button" type="button">Split</button>
 				<button id="toolbar-add" class="toggle-button" type="button">Add</button>

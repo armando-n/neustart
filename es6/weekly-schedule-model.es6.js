@@ -103,7 +103,7 @@ export class WeeklySchedule {
 		dayIndexes.forEach(dayIndex => {
 			let addCopyBlock = true;
 			const day = this.daysWithTimeBlocks[dayIndex];
-			const copyBlock = timeBlock.copy();
+			const copyBlock = timeBlock.copy(dayIndex);
 
 			// adjust time blocks and copy block for the day as needed
 			for (let blockIndex = day.values.length-1; blockIndex >= 0; blockIndex--) {

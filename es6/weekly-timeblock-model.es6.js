@@ -61,7 +61,6 @@ class WeeklyTimeBlock {
 	}
 
 	clone() {
-		console.log('WeeklyTimeBlock.clone');
 		return new WeeklyTimeBlock(this);
 	}
 

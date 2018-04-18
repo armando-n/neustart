@@ -24,12 +24,16 @@ export function showPasteButtons() {
 	document.getElementById('toolbar-copy').style.display = 'none';
 	document.getElementById('toolbar-cancel').style.display = 'inline-block';
 	document.getElementById('toolbar-paste').style.display = 'inline-block';
+	document.getElementById('copy-overwrite').style.display = 'inline-block';
+	document.querySelector('label[for="copy-overwrite"').style.display = 'inline-block';
 }
 
 export function showCopyButton() {
 	showAllButtons();
 	document.getElementById('toolbar-cancel').style.display = 'none';
 	document.getElementById('toolbar-paste').style.display = 'none';
+	document.getElementById('copy-overwrite').style.display = 'none';
+	document.querySelector('label[for="copy-overwrite"').style.display = 'none';
 }
 
 function showAllButtons(...exceptions) {
@@ -43,16 +47,8 @@ function hideAllButtons(...exceptions) {
 function toggleAllButtonsDisplay(show, ...exceptions) {
 	Array.from(document.querySelectorAll('#toolbar-buttons button'))
 		.forEach(button => {
-			console.log('------------------------');
-			console.log(`show: ${show}`);
-			console.log('button.id');
-			console.log(button.id);
-			if (!exceptions.includes(button.id)) {
-				console.log(`${show ? 'showing' : 'hiding'} ${button.id}`);
+			if (!exceptions.includes(button.id))
 				button.style.display = show ? 'inline-block' : 'none';
-			} else {
-				console.log(`skipping ${button.id}`);
-			}
 		});
 }
 
