@@ -223,6 +223,7 @@ export function setCopyMode(enable = true) {
 			d3.select(this).remove();
 		});
 		toolbar.clearButtons();
+		d3.selectAll('rect[data-conflict-block]').attr('data-conflict-block', null);
 	}
 }
 
@@ -241,6 +242,8 @@ export function completeCopyMode() {
 	});
 
 	// TODO overwrite value needed
+
+	setCopyMode(false);
 }
 
 export function setDeleteMode(enable = true) {
@@ -373,7 +376,7 @@ function showDaySelectionMode(...excludeDayIndexes) {
 					.attr('stroke', 'black')
 					.attr('stroke-width', 1)
 					.attr('fill', '#eeeeee')
-					.attr('fill-opacity', 0.7)
+					.attr('fill-opacity', 0.6)
 					.style('cursor', 'pointer')
 					.on('mouseover', function(day) {
 						
@@ -432,21 +435,90 @@ function showDaySelectionMode(...excludeDayIndexes) {
 							d3.select(copyRect)
 								.transition().duration(1250).ease(d3.easeCubic)
 								.attr('x', 0)
-								.on('end', function() {
+								.on('end', function(datum) {
 									const paddingV = 2.5;
 									const paddingH = 5;
 									const daySquare = d3.select(this.parentNode);
+									const schedule = timeBlockService.getActiveWeeklySchedule();
+
+									const scale = d3.scaleTime()
+										.domain([
+											moment().day(datum.index).startOf('day').toDate(),
+											moment().day(datum.index).endOf('day').toDate()
+										])
+										.range([0, getDimensions().dayHeight]);
+
+									const rectY = +d3.select(this).attr('y');
+									const rectHeight = +d3.select(this).attr('height');
+									const rectStartTime = scale.invert(rectY);
+									const rectEndTime = scale.invert(rectY + rectHeight);
+									const conflictBlocks = schedule.getConflictingBlocks(rectStartTime, rectEndTime);
+
+									if (conflictBlocks.length === 0)
+										return;
+
+									d3.select(this).raise();
+
+									conflictBlocks.forEach(block =>
+										d3.select(block.rect)
+											.attr('data-conflict-block', '')
+											.classed('no-hover', true)
+											.style('opacity', 0.0)
+											.raise()
+											.transition().duration(500).ease(d3.easeLinear)
+											.style('opacity', 0.65)
+									);
 
 									// create overwrite checkbox for each copied block
 									// const tooltipG = d3.select(this.parentNode).append('g');
 									const tooltipG = daySquare.append('g')
 										.attr('class', 'copy-tooltip')
-										.style('cursor', 'pointer')
-										.on('click', () => console.log('group clicked'));
+										.style('cursor', 'pointer');
 									const tooltipBorder = tooltipG.append('rect');
 									const overwriteText = tooltipG.append('text');
-									const checkbox = tooltipG.append('rect');
-									d3.select(this).raise();
+									const checkboxG = tooltipG.append('g');
+									const checkbox = checkboxG.append('rect');
+									const checkmark = checkboxG.append('path');
+									tooltipG.on('click', function() {
+										const checkbox = d3.select(this).select('.tooltip-checkbox');
+										const checkmark = d3.select(this).select('.tooltip-checkmark');
+										if (checkbox.node().hasAttribute('data-selected')) {
+											checkbox.attr('data-selected', null);
+											checkmark
+												.transition().duration(200).ease(d3.easeLinear)
+												.attr('stroke-dashoffset', checkmark.node().getTotalLength());
+
+											// move overlapping time blocks into the foreground
+											conflictBlocks.forEach(block => {
+												d3.select(block.rect)
+													.classed('no-hover', true)
+													.style('opacity', 0.0)
+													.raise()
+													.transition().duration(500).ease(d3.easeLinear)
+													.style('opacity', 0.65);
+												tooltipG.raise();
+											});
+											
+										} else {
+											checkbox.attr('data-selected', '');
+											checkmark
+												.transition().duration(200).ease(d3.easeLinear)
+												.attr('stroke-dashoffset', 0);
+
+											// move overlapping time blocks into the background
+											conflictBlocks.forEach(block =>
+												d3.select(block.rect)
+													.transition().duration(500).ease(d3.easeLinear)
+													.style('opacity', 0.0)
+													.on('end', function() {
+														d3.select(this)
+															.classed('no-hover', false)
+															.lower()
+															.style('opacity', null);
+													})
+											)
+										}
+									});
 
 									// text
 									overwriteText
@@ -479,19 +551,34 @@ function showDaySelectionMode(...excludeDayIndexes) {
 
 
 									// checkbox
+									const checkboxX = textBBox.x - 16;
+									const checkboxYStart = +d3.select(this).attr('y') + textBBox.height + paddingV*2 - 10.5;
+									const checkboxYEnd = +d3.select(this).attr('y') - paddingV*4 - 10.5;
 									checkbox
-										.style('opacity', 0.0)
-										.attr('x', textBBox.x - 16)
-										.attr('y', +d3.select(this).attr('y') + textBBox.height + paddingV*2 - 10.5)
+										.attr('class', 'tooltip-checkbox')
+										.attr('x', 0)
+										.attr('y', 0)
 										.attr('width', 12.5).attr('height', 12.5)
 										.attr('fill', '#4286f4')
 										.attr('rx', 2).attr('ry', 2)
 										.attr('stroke', '#2d4468')
 										.attr('stroke-width', 1);
-									checkbox
-										.transition().duration(350).ease(d3.easeSin)
+									checkboxG
+										.style('opacity', 0.0)
+										.attr('transform', `translate(${checkboxX}, ${checkboxYStart})`);
+									checkboxG.transition().duration(350).ease(d3.easeSin)
 										.style('opacity', 1.0)
-										.attr('y', +d3.select(this).attr('y') - paddingV*4 - 10.5);
+										.attr('transform', `translate(${checkboxX}, ${checkboxYEnd})`);
+									checkmark
+										.attr('class', 'tooltip-checkmark')
+										.attr('d', 'M 2.5 4.5 L 6.25 8 L 13.5 -1')
+										.attr('stroke', 'black')
+										.attr('stroke-width', 2)
+										.attr('fill', 'none');
+									const checkmarkLength = checkmark.node().getTotalLength();
+									checkmark
+										.attr('stroke-dasharray', `${checkmarkLength} ${checkmarkLength}`)
+										.attr('stroke-dashoffset', checkmarkLength);
 								});
 						} else {
 							day.selected = false;
@@ -616,6 +703,7 @@ function setWeeklyData(weeklySchedule = timeBlockService.getActiveWeeklySchedule
 				.attr('ry', 8)
 				.attr('width', dimensions.dayWidth)
 				.attr('height', block => yScale(block.endTime) - yScale(block.startTime))
+				.each(function(block) { block.rect = this })
 				.on('click', timeBlockClicked)
 				.call(d3.drag()
 					.on('drag', function(timeBlock) {
@@ -761,7 +849,7 @@ function findClosest30Mins(hours24, minutes) {
 	return [resultHours, resultMinutes];
 };
 
-function getDimensions() {
+export function getDimensions() {
 	const colPadding = 15;
 	const marginTop = 30;
 	const marginLeft = 45;

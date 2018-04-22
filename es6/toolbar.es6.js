@@ -1,5 +1,6 @@
 import 'babel-polyfill';
 import * as svgService from './dashboard-svg-service.es6.js';
+import * as timeBlockService from './timeblock-service.es6.js';
 
 window.addEventListener('load', init);
 
@@ -7,6 +8,7 @@ function init() {
 	// event handlers
 	document.getElementById('toolbar-fill').addEventListener('click', fillClicked);
 	document.getElementById('toolbar-copy').addEventListener('click', copyClicked);
+	document.getElementById('copy-overwrite').addEventListener('change', copyOverwriteClicked)
 	document.getElementById('toolbar-cancel').addEventListener('click', cancelClicked);
 	document.getElementById('toolbar-paste').addEventListener('click', pasteClicked);
 	document.getElementById('toolbar-delete').addEventListener('click', deleteClicked);
@@ -81,6 +83,75 @@ function copyClicked() {
 	else
 		this.classList.remove('pressed');
 	svgService.setCopyMode(enableCopy);
+}
+
+function copyOverwriteClicked() {
+	let boxesToClick;
+
+	if (this.checked)
+		boxesToClick = Array.from(document.querySelectorAll('.copy-tooltip .tooltip-checkbox:not([data-selected])'));
+	else
+		boxesToClick = Array.from(document.querySelectorAll('.copy-tooltip .tooltip-checkbox[data-selected]'));
+
+	boxesToClick.forEach(checkboxNode => {
+		const checkbox = d3.select(checkboxNode);
+		const checkmark = d3.select(checkboxNode.parentNode).select('.tooltip-checkmark');
+		const tooltipG = d3.select(checkboxNode.parentNode.parentNode);
+		const daySquare = d3.select(tooltipG.node().parentNode);
+		const dayIndex = daySquare.datum().index;
+		const copyRect = daySquare.select('.time-block.copy');
+
+		const scale = d3.scaleTime()
+			.domain([
+				moment().day(dayIndex).startOf('day').toDate(),
+				moment().day(dayIndex).endOf('day').toDate()
+			])
+			.range([0, svgService.getDimensions().dayHeight]);
+
+		const rectY = +copyRect.attr('y');
+		const rectHeight = +copyRect.attr('height');
+		const rectStartTime = scale.invert(rectY);
+		const rectEndTime = scale.invert(rectY + rectHeight);
+		const conflictBlocks = timeBlockService.getActiveWeeklySchedule().getConflictingBlocks(rectStartTime, rectEndTime);
+
+		if (!this.checked) {
+			checkbox.attr('data-selected', null);
+			checkmark
+				.transition().duration(200).ease(d3.easeLinear)
+				.attr('stroke-dashoffset', checkmark.node().getTotalLength());
+
+			// move overlapping time blocks into the foreground
+			conflictBlocks.forEach(block => {
+				d3.select(block.rect)
+					.classed('no-hover', true)
+					.style('opacity', 0.0)
+					.raise()
+					.transition().duration(500).ease(d3.easeLinear)
+					.style('opacity', 0.65);
+				tooltipG.raise();
+			});
+			
+		} else {
+			checkbox.attr('data-selected', '');
+			checkmark
+				.transition().duration(200).ease(d3.easeLinear)
+				.attr('stroke-dashoffset', 0);
+
+			// move overlapping time blocks into the background
+			conflictBlocks.forEach(block =>
+				d3.select(block.rect)
+					.transition().duration(500).ease(d3.easeLinear)
+					.style('opacity', 0.0)
+					.on('end', function() {
+						d3.select(this)
+							.classed('no-hover', false)
+							.lower()
+							.style('opacity', null);
+					})
+			)
+		}
+	});
+	
 }
 
 function cancelClicked() {

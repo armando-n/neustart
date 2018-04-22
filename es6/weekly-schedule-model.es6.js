@@ -209,6 +209,27 @@ export class WeeklySchedule {
 		return deletedBlocks;
 	}
 
+	/** Given a time range, searches the day of the time range for
+	 * any conflicting (i.e. overlapping) time blocks.  If any are
+	 * found, they are returned. */
+	getConflictingBlocks(startTime, endTime) {
+		const conflictBlocks = [];
+		const startMoment = moment(startTime);
+		const endMoment = moment(endTime);
+		const day = this.daysWithTimeBlocks[startMoment.day()];
+
+		day.values.forEach((timeBlock, blockIndex) => {
+			if (
+				timeBlock.startMoment.isBefore(endMoment, 'minute') &&
+				startMoment.isBefore(timeBlock.endMoment, 'minute')
+			) {
+				conflictBlocks.push(timeBlock);
+			}
+		});
+
+		return conflictBlocks;
+	}
+
 	/** Returns an array containing any time blocks found in this schedule that have no block ID. */
 	findUnidentifiedBlocks() {
 		const unidentifiedBlocks = [];
