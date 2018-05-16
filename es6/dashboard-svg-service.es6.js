@@ -108,83 +108,10 @@ export function createSvg(weeklySchedule) {
 		.attr('height', dimensions.dayHeight)
 		.attr('fill-opacity', 0.0)
 		.attr('stroke-opacity', 0.0)
-		.on('mousedown', function() {
-			if (mode !== '')
-				return;
-
-			mode = 'creating';
-
-			// determine the necessary height to make the new rect 30 mins long
-			const snapTo = getSnapTo(this, scale);
-			const startTime = scale.invert(snapTo.y);
-			const thirtyMinAfterStart = moment(startTime).add(30, 'minutes');
-			const endTimeY = scale(thirtyMinAfterStart.toDate());
-			const newRectHeight = endTimeY - snapTo.y;
-			undergroundCanvas.append('rect')
-				.attr('class', 'time-block time-block-new')
-				.attr('x', dimensions.dayWidth * snapTo.day)
-				.attr('y', snapTo.y)
-				.attr('rx', 8)
-				.attr('ry', 8)
-				.attr('width', dimensions.dayWidth)
-				.attr('height', newRectHeight);
-		})
-		.on('mousemove', function() {
-
-			if (mode === 'creating') {
-
-				// determine height to snap to for new time block rect
-				const snapTo = getSnapTo(this, scale);
-				const newRect = d3.select('.time-block-new');
-				let newRectHeight;
-				if (snapTo.y - newRect.attr('y') > 1) {
-					newRectHeight = snapTo.y - newRect.attr('y');
-				} else {
-					// determine the necessary height to make the new rect 30 mins long
-					const startTime = scale.invert(newRect.attr('y'));
-					const thirtyMinAfterStart = moment(startTime).add(30, 'minutes');
-					const endTimeY = scale(thirtyMinAfterStart.toDate());
-					newRectHeight = endTimeY - newRect.attr('y');
-				}
-
-				newRect.attr('height', newRectHeight);
-				const lineY = toNum(newRect.attr('y')) + toNum(newRect.attr('height'));
-				const lineText = `${snapTo.hours12}:${zPad(snapTo.minutes)} ${snapTo.meridiem}`;
-
-				// move tracking line/text for the bottom of the new time block rect
-				Hover.showBottomLine(lineY, snapTo.x, snapTo.y + 21, lineText);
-			}
-
-			// move line/text to mouse pointer and display corresponding time-value
-			else if (mode === '') {
-				const snapTo = getSnapTo(this, scale);
-				const lineText = `${snapTo.hours12}:${zPad(snapTo.minutes)} ${snapTo.meridiem}`;
-				Hover.showTopLine(snapTo.y, snapTo.x, snapTo.y - 10, lineText);
-			}
-		})
-		.on('mouseup', function() {
-			if (mode === 'creating') {
-				// remove tracking lines and texts
-				Hover.hideBotomLine();
-
-				// create basic new time block from new rect data
-				const newTimeBlock = createBlockFromNewRect(this, scale);
-
-				// show add time block modal
-				showAddBlockModal(newTimeBlock);
-			}
-			mode = '';
-		})
-		.on('mouseout', function() {
-			if (mode === 'creating') {
-				mode = '';
-				const newTimeBlock = createBlockFromNewRect(this, scale);
-				showAddBlockModal(newTimeBlock);
-			}
-
-			// remove tracking lines and texts
-			Hover.hideLines();
-		});
+		.on('mousedown', emptySpaceMouseDown)
+		.on('mousemove', emptySpaceMouseMove)
+		.on('mouseup', emptySpaceMouseOut)
+		.on('mouseout', emptySpaceMouseOut);
 
 	// bind data and draw day squares and time blocks for each day of the week
 	setWeeklyData(weeklySchedule);
@@ -883,6 +810,22 @@ export function getDimensions() {
 	}
 }
 
+function createScale(dayIndex) {
+	let domainStart, domainEnd;
+
+	if (dayIndex !== undefined) {
+		domainStart = moment().day(dayIndex).startOf('day').toDate();
+		domainEnd = moment().day(dayIndex).endOf('day').toDate();
+	} else {
+		domainStart = moment().startOf('day').toDate();
+		domainEnd = moment().endOf('day').toDate();
+	}
+
+	return d3.scaleTime()
+		.domain([domainStart, domainEnd])
+		.range([0, getDimensions().dayHeight]);
+}
+
 function getSquareForDay(dayIndex) {
 	let targetDaySquare;
 	d3.selectAll('g.day-square').each(function(day, index) {
@@ -948,6 +891,7 @@ class Hover {
 		d3.select('#track-text-border-top').attr('display', 'none');
 	}
 
+	/** remove mouseover tracking lines and texts */
 	static hideBotomLine() {
 		d3.select('#track-line-bottom').attr('display', 'none');
 		d3.select('#track-text-bottom').attr('display', 'none');
@@ -996,4 +940,85 @@ function timeBlockClicked(timeBlock) {
 		case '':
 			timeBlockModal.show(timeBlock, 'edit', setWeeklyData);
 	}
+}
+
+/** Enables 'creating' mode and Creates a new 30-min time block rect at the location clicked. */
+function emptySpaceMouseDown() {
+	if (mode !== '')
+		return;
+
+	mode = 'creating';
+
+	const dimensions = getDimensions();
+	const scale = createScale();
+	const snapTo = getSnapTo(this, scale);
+
+	// determine the necessary height to make the new rect 30 mins long
+	const startTime = scale.invert(snapTo.y);
+	const thirtyMinAfterStart = moment(startTime).add(30, 'minutes');
+	const endTimeY = scale(thirtyMinAfterStart.toDate());
+	const newRectHeight = endTimeY - snapTo.y;
+	undergroundCanvas.append('rect')
+		.attr('class', 'time-block time-block-new')
+		.attr('x', dimensions.dayWidth * snapTo.day)
+		.attr('y', snapTo.y)
+		.attr('rx', 8)
+		.attr('ry', 8)
+		.attr('width', dimensions.dayWidth)
+		.attr('height', newRectHeight);
+}
+
+function emptySpaceMouseMove() {
+	const scale = createScale();
+	const snapTo = getSnapTo(this, scale);
+	const lineText = `${snapTo.hours12}:${zPad(snapTo.minutes)} ${snapTo.meridiem}`;
+	
+	if (mode === 'creating') {
+
+		// determine height to snap to for new time block rect
+		const newRect = d3.select('.time-block-new');
+		let newRectHeight;
+		if (snapTo.y - newRect.attr('y') > 1) {
+			newRectHeight = snapTo.y - newRect.attr('y');
+		} else {
+			// determine the necessary height to make the new rect 30 mins long
+			const startTime = scale.invert(newRect.attr('y'));
+			const thirtyMinAfterStart = moment(startTime).add(30, 'minutes');
+			const endTimeY = scale(thirtyMinAfterStart.toDate());
+			newRectHeight = endTimeY - newRect.attr('y');
+		}
+
+		newRect.attr('height', newRectHeight);
+
+		// move tracking line/text for the bottom of the new time block rect
+		const lineY = toNum(newRect.attr('y')) + toNum(newRect.attr('height'));
+		Hover.showBottomLine(lineY, snapTo.x, snapTo.y + 21, lineText);
+	}
+
+	// move line/text to mouse pointer and display corresponding time-value
+	else if (mode === '') {
+		Hover.showTopLine(snapTo.y, snapTo.x, snapTo.y - 10, lineText);
+	}
+}
+
+/** Create time block from new rect data and show add block modal using the new block. */
+// function emptySpaceMouseUp() {
+// 	if (mode === 'creating') {
+// 		Hover.hideBotomLine();
+// 		const newTimeBlock = createBlockFromNewRect(this, scale);
+// 		showAddBlockModal(newTimeBlock);
+// 	}
+// 	mode = '';
+// }
+
+/** Create time block from new rect data and show add block modal using the new block. */
+function emptySpaceMouseOut() {
+	if (mode === 'creating') {
+		mode = '';
+		const newTimeBlock = createBlockFromNewRect(this, scale);
+		showAddBlockModal(newTimeBlock);
+	}
+
+	// remove tracking lines and texts
+	Hover.hideLines();
 }
