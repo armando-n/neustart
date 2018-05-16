@@ -958,7 +958,7 @@ function emptySpaceMouseDown() {
 	const thirtyMinAfterStart = moment(startTime).add(30, 'minutes');
 	const endTimeY = scale(thirtyMinAfterStart.toDate());
 	const newRectHeight = endTimeY - snapTo.y;
-	undergroundCanvas.append('rect')
+	d3.select('.underground-canvas').append('rect')
 		.attr('class', 'time-block time-block-new')
 		.attr('x', dimensions.dayWidth * snapTo.day)
 		.attr('y', snapTo.y)
@@ -1015,7 +1015,7 @@ function emptySpaceMouseMove() {
 function emptySpaceMouseOut() {
 	if (mode === 'creating') {
 		mode = '';
-		const newTimeBlock = createBlockFromNewRect(this, scale);
+		const newTimeBlock = createBlockFromNewRect(this, createScale());
 		showAddBlockModal(newTimeBlock);
 	}
 
