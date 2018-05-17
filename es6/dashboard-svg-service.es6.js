@@ -216,15 +216,15 @@ function createEmptyBlocks() {
 	const dimensions = getDimensions();
 	const emptyBlocksSchedule = timeBlockService.getActiveWeeklySchedule().getEmptyTimeBlocks();
 
-	d3.selectAll('g.day').each(function(day, index) {
+	d3.selectAll('g.day').each(function(day) {
 
 		// create scale for the current day
 		const scale = d3.scaleTime()
-			.domain([moment().day(index).startOf('day').toDate(), moment().day(index).endOf('day').toDate()])
+			.domain([moment().day(day.index).startOf('day').toDate(), moment().day(day.index).endOf('day').toDate()])
 			.range([0, dimensions.dayHeight]);
 
 		d3.select(this).selectAll('g.day-square').selectAll('rect.time-block-new')
-			.data(emptyBlocksSchedule.daysWithTimeBlocks[index].values)
+			.data(emptyBlocksSchedule.daysWithTimeBlocks[day.index].values)
 			.enter()
 			.append('rect')
 			.attr('class', 'time-block time-block-new')
@@ -291,7 +291,7 @@ function createEmptyBlocks() {
 function showDaySelectionMode(...excludeDayIndexes) {
 	const dimensions = getDimensions();
 	d3.selectAll('g.day-square')
-		.each(function(day) {
+		.each(function(day, index) {
 			if (excludeDayIndexes.indexOf(day.index) === -1) {
 				d3.select(this)
 					.append('rect')
@@ -363,6 +363,9 @@ function showDaySelectionMode(...excludeDayIndexes) {
 								.transition().duration(1250).ease(d3.easeCubic)
 								.attr('x', 0)
 								.on('end', function(datum) {
+									if (mode !== 'copy')
+										return;
+
 									const paddingV = 2.5;
 									const paddingH = 5;
 									const daySquare = d3.select(this.parentNode);
@@ -607,11 +610,11 @@ function setWeeklyData(weeklySchedule = timeBlockService.getActiveWeeklySchedule
 			.attr('transform', `translate(0, ${dimensions.marginTop})`);
 
 	// draw time blocks for each day
-	d3.selectAll('g.day-square').each(function(day, dayIndex) {
+	d3.selectAll('g.day-square').each(function(day) {
 
 		// y-scale for the current day
-		const domainStart = moment().day(dayIndex).startOf('day').toDate();
-		const domainEnd = moment().day(dayIndex).endOf('day').toDate();
+		const domainStart = moment().day(day.index).startOf('day').toDate();
+		const domainEnd = moment().day(day.index).endOf('day').toDate();
 		const yScale = d3.scaleTime()
 			.domain([domainStart, domainEnd])
 			.range([0, dimensions.dayHeight]);
