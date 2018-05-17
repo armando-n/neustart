@@ -218,20 +218,15 @@ function createEmptyBlocks() {
 
 	d3.selectAll('g.day').each(function(day) {
 
-		// create scale for the current day
-		const scale = d3.scaleTime()
-			.domain([moment().day(day.index).startOf('day').toDate(), moment().day(day.index).endOf('day').toDate()])
-			.range([0, dimensions.dayHeight]);
-
 		d3.select(this).selectAll('g.day-square').selectAll('rect.time-block-new')
 			.data(emptyBlocksSchedule.daysWithTimeBlocks[day.index].values)
 			.enter()
 			.append('rect')
 			.attr('class', 'time-block time-block-new')
 			.attr('x', 0)
-			.attr('y', timeBlock => scale(timeBlock.startTime))
+			.attr('y', timeBlock => day.scale(timeBlock.startTime))
 			.attr('width', dimensions.dayWidth)
-			.attr('height', timeBlock => scale(timeBlock.endTime) - scale(timeBlock.startTime))
+			.attr('height', timeBlock => day.scale(timeBlock.endTime) - day.scale(timeBlock.startTime))
 			.attr('rx', 8)
 			.attr('ry', 8)
 			.attr('stroke-dasharray', '10, 5')
@@ -338,7 +333,7 @@ function showDaySelectionMode(...excludeDayIndexes) {
 							const targetDaySquare = d3.select(this.parentNode);
 							const targetDayIndex = day.index;
 							const copyRect = rectToCopy.node().cloneNode(true);
-							d3.select(copyRect).datum({ index: targetDayIndex });
+							d3.select(copyRect).datum({ index: targetDayIndex, scale: getDayScale(targetDayIndex) });
 
 // console.log('rectToCopy.datum()');
 // console.log(rectToCopy.datum());
@@ -362,7 +357,7 @@ function showDaySelectionMode(...excludeDayIndexes) {
 							d3.select(copyRect)
 								.transition().duration(1250).ease(d3.easeCubic)
 								.attr('x', 0)
-								.on('end', function(datum) {
+								.on('end', function(targetDay) {
 									if (mode !== 'copy')
 										return;
 
@@ -370,18 +365,10 @@ function showDaySelectionMode(...excludeDayIndexes) {
 									const paddingH = 5;
 									const daySquare = d3.select(this.parentNode);
 									const schedule = timeBlockService.getActiveWeeklySchedule();
-
-									const scale = d3.scaleTime()
-										.domain([
-											moment().day(datum.index).startOf('day').toDate(),
-											moment().day(datum.index).endOf('day').toDate()
-										])
-										.range([0, getDimensions().dayHeight]);
-
 									const rectY = +d3.select(this).attr('y');
 									const rectHeight = +d3.select(this).attr('height');
-									const rectStartTime = scale.invert(rectY);
-									const rectEndTime = scale.invert(rectY + rectHeight);
+									const rectStartTime = targetDay.scale.invert(rectY);
+									const rectEndTime = targetDay.scale.invert(rectY + rectHeight);
 									const conflictBlocks = schedule.getConflictingBlocks(rectStartTime, rectEndTime);
 
 									if (conflictBlocks.length === 0)
@@ -619,6 +606,9 @@ function setWeeklyData(weeklySchedule = timeBlockService.getActiveWeeklySchedule
 			.domain([domainStart, domainEnd])
 			.range([0, dimensions.dayHeight]);
 
+		// store scale in day square datum for easy access/use
+		d3.select(this).each(day => day.scale = yScale);
+
 		// create time block rects
 		const blockRects = d3.select(this) // this is the <g> day-square element
 			.selectAll('rect.time-block')
@@ -827,6 +817,17 @@ function createScale(dayIndex) {
 	return d3.scaleTime()
 		.domain([domainStart, domainEnd])
 		.range([0, getDimensions().dayHeight]);
+}
+
+function getDayScale(dayIndex) {
+	let scale;
+	d3.selectAll('g.day-square')
+		.filter(day => day.index === dayIndex)
+		.each(day => scale = day.scale);
+	if (scale === undefined)
+		throw new Error(`Unable to find scale for day index ${dayIndex}`);
+
+	return scale;
 }
 
 function getSquareForDay(dayIndex) {
