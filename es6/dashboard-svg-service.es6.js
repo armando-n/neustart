@@ -549,10 +549,10 @@ function animateStroke(datum) {
 	}
 }
 
-function createBlockFromNewRect(svgElement, scale) {
-	const snapTo = getSnapTo(svgElement, scale);
+function createBlockFromNewRect(svgElement) {
+	const snapTo = getSnapTo(svgElement);
 	const newRectTopY = d3.select('.time-block-new').attr('y');
-	const startTime = scale.invert(newRectTopY);
+	const startTime = snapTo.scale.invert(newRectTopY);
 	return new WeeklyTimeBlock({
 		dayOfWeek: WeeklySchedule.days[snapTo.day],
 		startHour: startTime.getHours(),
@@ -587,11 +587,11 @@ function setWeeklyData(weeklySchedule = timeBlockService.getActiveWeeklySchedule
 	const dimensions = getDimensions();
 	d3.select('.canvas')
 			.selectAll('g.day')
-			.data(weeklySchedule.daysWithTimeBlocks)
+			.data(weeklySchedule.daysWithTimeBlocks, day => day.index)
 			.enter()
 		.append('g')
 			.attr('class', 'day')
-			.attr('transform', (day, index) => `translate(${index*dimensions.dayWidth}, 0)`)
+			.attr('transform', (day) => `translate(${day.index*dimensions.dayWidth}, 0)`)
 		.append('g')
 			.attr('class', 'day-square')
 			.attr('transform', `translate(0, ${dimensions.marginTop})`);
@@ -732,14 +732,8 @@ function setWeeklyData(weeklySchedule = timeBlockService.getActiveWeeklySchedule
 }
 
 /** Determine the coordinates, x-scale day value, and y-scale time-value of the location to snap to */
-function getSnapTo(svgElement, scale) {
+function getSnapTo(svgElement) {
 	const [mouseX, mouseY] = d3.mouse(svgElement);
-	const mouseTime = moment(scale.invert(mouseY));
-	const [hours24, minutes] = [ mouseTime.hours(), mouseTime.minutes() ];
-	const [snapToHours24, snapToMinutes] = findClosest30Mins(hours24, minutes);
-	const [snapToHours12, meridiem] = to12Hours(snapToHours24);
-	const snapToTime = moment().hours(snapToHours24).minutes(snapToMinutes).toDate();
-	const snapToY = scale(snapToTime);
 
 	// determine day of week
 	const dimensions = getDimensions();
@@ -751,10 +745,23 @@ function getSnapTo(svgElement, scale) {
 	if (dayIndex > 6)
 		throw new Error('Day not found in SvgService.getMouseDay');
 
+	// create scale
+	const scale = d3.scaleTime()
+		.domain([moment().startOf('day').toDate(), moment().endOf('day').toDate()])
+		.range([0, getDimensions().dayHeight]);
+
+	// calculate remaining values
+	const mouseTime = moment(scale.invert(mouseY));
+	const [hours24, minutes] = [ mouseTime.hours(), mouseTime.minutes() ];
+	const [snapToHours24, snapToMinutes] = findClosest30Mins(hours24, minutes);
+	const [snapToHours12, meridiem] = to12Hours(snapToHours24);
+	const snapToTime = moment().hours(snapToHours24).minutes(snapToMinutes).toDate();
+	const snapToY = scale(snapToTime);
+
 	// find the boundaries' time-values for this empty space
 	const [topBoundaryTime, bottomBoundaryTime] = timeBlockService.getActiveWeeklySchedule().findEmptyBoundaries(snapToTime, dayIndex);
 
-	return { x: mouseX, y: snapToY, day: dayIndex, hours12: snapToHours12, hours24: snapToHours24, minutes: snapToMinutes, meridiem, topBoundaryTime, bottomBoundaryTime };
+	return { x: mouseX, y: snapToY, day: dayIndex, hours12: snapToHours12, hours24: snapToHours24, minutes: snapToMinutes, meridiem, topBoundaryTime, bottomBoundaryTime, scale };
 }
 
 function findClosest30Mins(hours24, minutes) {
@@ -803,21 +810,21 @@ export function getDimensions() {
 	}
 }
 
-function createScale(dayIndex) {
-	let domainStart, domainEnd;
+// function createScale(dayIndex) {
+// 	let domainStart, domainEnd;
 
-	if (dayIndex !== undefined) {
-		domainStart = moment().day(dayIndex).startOf('day').toDate();
-		domainEnd = moment().day(dayIndex).endOf('day').toDate();
-	} else {
-		domainStart = moment().startOf('day').toDate();
-		domainEnd = moment().endOf('day').toDate();
-	}
+// 	if (dayIndex !== undefined) {
+// 		domainStart = moment().day(dayIndex).startOf('day').toDate();
+// 		domainEnd = moment().day(dayIndex).endOf('day').toDate();
+// 	} else {
+// 		domainStart = moment().startOf('day').toDate();
+// 		domainEnd = moment().endOf('day').toDate();
+// 	}
 
-	return d3.scaleTime()
-		.domain([domainStart, domainEnd])
-		.range([0, getDimensions().dayHeight]);
-}
+// 	return d3.scaleTime()
+// 		.domain([domainStart, domainEnd])
+// 		.range([0, getDimensions().dayHeight]);
+// }
 
 function getDayScale(dayIndex) {
 	let scale;
@@ -954,13 +961,12 @@ function emptySpaceMouseDown() {
 	mode = 'creating';
 
 	const dimensions = getDimensions();
-	const scale = createScale();
-	const snapTo = getSnapTo(this, scale);
+	const snapTo = getSnapTo(this);
 
 	// determine the necessary height to make the new rect 30 mins long
-	const startTime = scale.invert(snapTo.y);
+	const startTime = snapTo.scale.invert(snapTo.y);
 	const thirtyMinAfterStart = moment(startTime).add(30, 'minutes');
-	const endTimeY = scale(thirtyMinAfterStart.toDate());
+	const endTimeY = snapTo.scale(thirtyMinAfterStart.toDate());
 	const newRectHeight = endTimeY - snapTo.y;
 	d3.select('.underground-canvas').append('rect')
 		.attr('class', 'time-block time-block-new')
@@ -973,8 +979,7 @@ function emptySpaceMouseDown() {
 }
 
 function emptySpaceMouseMove() {
-	const scale = createScale();
-	const snapTo = getSnapTo(this, scale);
+	const snapTo = getSnapTo(this);
 	const lineText = `${snapTo.hours12}:${zPad(snapTo.minutes)} ${snapTo.meridiem}`;
 	
 	if (mode === 'creating') {
@@ -986,9 +991,9 @@ function emptySpaceMouseMove() {
 			newRectHeight = snapTo.y - newRect.attr('y');
 		} else {
 			// determine the necessary height to make the new rect 30 mins long
-			const startTime = scale.invert(newRect.attr('y'));
+			const startTime = snapTo.scale.invert(newRect.attr('y'));
 			const thirtyMinAfterStart = moment(startTime).add(30, 'minutes');
-			const endTimeY = scale(thirtyMinAfterStart.toDate());
+			const endTimeY = snapTo.scale(thirtyMinAfterStart.toDate());
 			newRectHeight = endTimeY - newRect.attr('y');
 		}
 
@@ -1019,7 +1024,7 @@ function emptySpaceMouseMove() {
 function emptySpaceMouseOut() {
 	if (mode === 'creating') {
 		mode = '';
-		const newTimeBlock = createBlockFromNewRect(this, createScale());
+		const newTimeBlock = createBlockFromNewRect(this);
 		showAddBlockModal(newTimeBlock);
 	}
 
