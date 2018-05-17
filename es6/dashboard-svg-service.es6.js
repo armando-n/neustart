@@ -238,48 +238,9 @@ function createEmptyBlocks() {
 				datum.animate = true;
 				animateDashes.call(this, datum);
 			})
-			.on('mouseover', function(datum) {
-				if (mode === 'fill') {
-					// disable animation and show rect fill
-					datum.animate = false;
-					d3.select(this).interrupt();
-					d3.select(this)
-						.transition().duration(200)
-						.attr('fill-opacity', 0.7);
-				}
-			})
-			.on('mouseout', function(datum) {
-				if (mode === 'fill') {
-					// enable animation and hide rect fill
-					datum.animate = true;
-					d3.select(this).interrupt();
-					d3.select(this)
-						.transition().duration(200)
-						.attr('fill-opacity', 0.0)
-						.on('end', animateDashes);
-				}
-			})
-			.on('click', function(block) {
-				mode = '';
-
-				// disable animation
-				block.animate = false;
-
-				// remove all other empty time block rects
-				const rect = this;
-				d3.selectAll('.time-block-new').each(function() {
-					if (this !== rect)
-						d3.select(this).remove();
-				});
-
-				// show add block modal w/clicked empty time block
-				timeBlockModal.show(
-					block,
-					'add',
-					() => { setFillMode(false); setWeeklyData(); },
-					() => setFillMode(false)
-				);
-			});
+			.on('mouseover', fillBlockMouseOver)
+			.on('mouseout', fillBlockMouseOut)
+			.on('click', fillBlockClick);
 	});
 }
 
@@ -1030,4 +991,49 @@ function emptySpaceMouseOut() {
 
 	// remove tracking lines and texts
 	Hover.hideLines();
+}
+
+function fillBlockMouseOver(fillBlock) {
+	if (mode === 'fill') {
+		// disable animation and show rect fill
+		fillBlock.animate = false;
+		d3.select(this).interrupt();
+		d3.select(this)
+			.transition().duration(200)
+			.attr('fill-opacity', 0.7);
+	}
+}
+
+function fillBlockMouseOut(fillBlock) {
+	if (mode === 'fill') {
+		// enable animation and hide rect fill
+		fillBlock.animate = true;
+		d3.select(this).interrupt();
+		d3.select(this)
+			.transition().duration(200)
+			.attr('fill-opacity', 0.0)
+			.on('end', animateDashes);
+	}
+}
+
+function fillBlockClick(fillBlock) {
+	mode = '';
+
+	// disable animation
+	fillBlock.animate = false;
+
+	// remove all other empty time block rects
+	const rect = this;
+	d3.selectAll('.time-block-new').each(function() {
+		if (this !== rect)
+			d3.select(this).remove();
+	});
+
+	// show add block modal w/clicked empty time block
+	timeBlockModal.show(
+		fillBlock,
+		'add',
+		() => { setFillMode(false); setWeeklyData(); },
+		() => setFillMode(false)
+	);
 }
