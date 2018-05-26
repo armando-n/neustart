@@ -622,12 +622,8 @@ function timeBlockClicked(timeBlock) {
 
 		case 'copy':
 			if (d3.select('g.day-square rect.time-block.selected').empty()) {
-				toolbar.showPasteButtons();
-				d3.select(this.parentNode).selectAll('.time-block:not(.selected)')
-					.classed('no-hover', true);
 				d3.select(this).classed('selected', true);
-				showMessage('Select days to paste to');
-				copyMode.showDaySelectionMode(timeBlock.dayIndex);
+				copyMode.showDaySelectionSquares(timeBlock.dayIndex);
 			}
 			break;
 

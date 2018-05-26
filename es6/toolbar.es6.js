@@ -91,68 +91,7 @@ function copyClicked() {
 }
 
 function copyOverwriteClicked() {
-	let boxesToClick;
-
-	if (this.checked)
-		boxesToClick = Array.from(document.querySelectorAll('.copy-tooltip .tooltip-checkbox:not([data-selected])'));
-	else
-		boxesToClick = Array.from(document.querySelectorAll('.copy-tooltip .tooltip-checkbox[data-selected]'));
-
-	boxesToClick.forEach(checkboxNode => {
-		// select the various parts of the checkbox and day
-		const checkbox = d3.select(checkboxNode);
-		const checkmark = d3.select(checkboxNode.parentNode).select('.tooltip-checkmark');
-		const tooltipG = d3.select(checkboxNode.parentNode.parentNode);
-		const daySquare = d3.select(tooltipG.node().parentNode);
-		const dayIndex = daySquare.datum().index;
-		const copyRect = daySquare.select('.time-block.copy');
-		const scale = daySquare.datum().scale;
-
-		// determine which blocks conflict with copy, if any
-		const rectY = +copyRect.attr('y');
-		const rectHeight = +copyRect.attr('height');
-		const rectStartTime = scale.invert(rectY);
-		const rectEndTime = scale.invert(rectY + rectHeight);
-		const conflictBlocks = timeBlockService.getActiveWeeklySchedule().getConflictingBlocks(rectStartTime, rectEndTime);
-
-		if (!this.checked) {
-			checkbox.attr('data-selected', null);
-			checkmark
-				.transition().duration(200).ease(d3.easeLinear)
-				.attr('stroke-dashoffset', checkmark.node().getTotalLength());
-
-			// move overlapping time blocks into the foreground
-			conflictBlocks.forEach(block => {
-				d3.select(block.rect)
-					.classed('no-hover', true)
-					.style('opacity', 0.0)
-					.raise()
-					.transition().duration(500).ease(d3.easeLinear)
-					.style('opacity', 0.65);
-				tooltipG.raise();
-			});
-			
-		} else {
-			checkbox.attr('data-selected', '');
-			checkmark
-				.transition().duration(200).ease(d3.easeLinear)
-				.attr('stroke-dashoffset', 0);
-
-			// move overlapping time blocks into the background
-			conflictBlocks.forEach(block =>
-				d3.select(block.rect)
-					.transition().duration(500).ease(d3.easeLinear)
-					.style('opacity', 0.0)
-					.on('end', function() {
-						d3.select(this)
-							.classed('no-hover', false)
-							.lower()
-							.style('opacity', null);
-					})
-			)
-		}
-	});
-	
+    copyMode.setOverwriteAll(this.checked);
 }
 
 function cancelClicked() {
@@ -161,7 +100,7 @@ function cancelClicked() {
 }
 
 function pasteClicked() {
-	svgService.completeCopyMode();
+	copyMode.completeCopyMode();
 }
 
 function deleteClicked() {

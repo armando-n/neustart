@@ -1,6 +1,7 @@
 import 'babel-polyfill';
 import * as svgService from './dashboard-svg-service.es6.js';
 import * as timeBlockService from './timeblock-service.es6.js';
+import * as toolbar from './toolbar.es6.js';
 
 export function setCopyMode(enable = true) {
 	svgService.setMode(enable ? 'copy' : '');
@@ -23,12 +24,19 @@ export function setCopyMode(enable = true) {
 }
 
 /** Creates selection rects above each day that animate on hover. */
-export function showDaySelectionMode(...excludeDayIndexes) {
+export function showDaySelectionSquares(...excludeDayIndexes) {
 	const dimensions = svgService.getDimensions();
+	toolbar.showPasteButtons();
+	svgService.showMessage('Select days to paste to');
+
+	// d3.select(this.parentNode).selectAll('.time-block:not(.selected)')
+	// 	.classed('no-hover', true);
+	
 	d3.selectAll('g.day-square').each(function(day) {
+		const daySquare = d3.select(this);
+
 		if (excludeDayIndexes.indexOf(day.index) === -1) {
-			d3.select(this)
-				.append('rect')
+			daySquare.append('rect')
 				.attr('class', 'day-select')
 				.attr('x', 0)
 				.attr('y', 0)
@@ -39,11 +47,14 @@ export function showDaySelectionMode(...excludeDayIndexes) {
 				.attr('fill', '#eeeeee')
 				.attr('fill-opacity', 0.6)
 				.style('cursor', 'pointer')
-				.on('mouseover', daySelectRectMouseOver)
-				.on('mouseout', daySelectRectMouseOut)
-				.on('click', dayClicked);
+				.on('mouseover', daySelectSquareMouseOver)
+				.on('mouseout', daySelectSquareMouseOut)
+				.on('click', daySelectSquareClicked);
+		} else {
+			daySquare.selectAll('.time-block').classed('no-hover', true);
+			// daySquare.selectAll('.time-block:not(.selected)').classed('no-hover', true);
 		}
-	})
+	});
 }
 
 export function completeCopyMode() {
@@ -65,93 +76,69 @@ export function completeCopyMode() {
 	setCopyMode(false);
 }
 
-function bringBlockRectsToFront(timeBlocks) {
-	timeBlocks.forEach(block =>
-		d3.select(block.rect)
-			.attr('data-conflict-block', '')
-			.classed('no-hover', true)
-			.style('opacity', 0.0)
-			.raise()
-			.transition().duration(500).ease(d3.easeLinear)
-			.style('opacity', 0.65)
-	);
-}
+export function setOverwriteAll(overwriteAll = true) {
+	let boxesToClick;
 
-// --------------------------- Event Handlers --------------------------- \\
+	if (overwriteAll)
+		boxesToClick = Array.from(document.querySelectorAll('.copy-tooltip .tooltip-checkbox:not([data-selected])'));
+	else
+		boxesToClick = Array.from(document.querySelectorAll('.copy-tooltip .tooltip-checkbox[data-selected]'));
 
-function dayClicked(day) {
-	if (!day.selected) {
-		day.selected = true;
-		day.animate = false;
-		// d3.select(this).attr('fill', '#57aa57');
-		const dimensions = svgService.getDimensions();
+	boxesToClick.forEach(checkboxNode => {
+		// select the various parts of the checkbox and day
+		const checkbox = d3.select(checkboxNode);
+		const checkmark = d3.select(checkboxNode.parentNode).select('.tooltip-checkmark');
+		const tooltipG = d3.select(checkboxNode.parentNode.parentNode);
+		const daySquare = d3.select(tooltipG.node().parentNode);
+		const dayIndex = daySquare.datum().index;
+		const copyRect = daySquare.select('.time-block.copy');
+		const scale = daySquare.datum().scale;
 
-		// create new rect on top of selected time block
-		const rectToCopy = d3.select('rect.time-block.selected');
-		const sourceDayIndex = rectToCopy.datum().dayIndex;
-		const sourceDaySquare = d3.select(rectToCopy.node().parentNode);
-		const targetDaySquare = d3.select(this.parentNode);
-		const targetDayIndex = day.index;
-		const daysAway = sourceDayIndex - targetDayIndex;
-		const copyRect = rectToCopy.node().cloneNode(true);
-		d3.select(copyRect).datum({ index: targetDayIndex, scale: svgService.getDayScale(targetDayIndex) });
-		d3.select(copyRect)
-			.classed('copy', true)
-			.attr('x', daysAway * dimensions.dayWidth);
+		// determine which blocks conflict with copy, if any
+		const rectY = +copyRect.attr('y');
+		const rectHeight = +copyRect.attr('height');
+		const rectStartTime = scale.invert(rectY);
+		const rectEndTime = scale.invert(rectY + rectHeight);
+		const conflictBlocks = timeBlockService.getActiveWeeklySchedule().getConflictingBlocks(rectStartTime, rectEndTime);
 
-		// add new rect to target day square and animate it to move to that day
-		targetDaySquare.node().appendChild(copyRect);
-		d3.select(copyRect)
-			.transition().duration(1250).ease(d3.easeCubic)
-			.attr('x', 0)
-			.on('end', showOverwriteCheckbox);
-	} else {
-		day.selected = false;
-		const daySquare = d3.select(this.parentNode);
-		daySquare.select('rect.copy')
-			.transition().duration(750).ease(d3.easeCubic)
-			.style('opacity', 0.0)
-			.remove();
-		daySquare.select('g.copy-tooltip')
-			.transition().duration(750).ease(d3.easeCubic)
-			.style('opacity', 0.0)
-			.remove();
-	}
-}
+		if (!overwriteAll) {
+			checkbox.attr('data-selected', null);
+			checkmark
+				.transition().duration(200).ease(d3.easeLinear)
+				.attr('stroke-dashoffset', checkmark.node().getTotalLength());
 
-function daySelectRectMouseOver(day) {
-	day.animate = true;
-	const strokeColor = day.selected ? '#f185a8' : '#57e057';
-	d3.select(this.parentNode.parentNode).raise();
-	d3.select(this)
-		.attr('stroke', strokeColor)
-		.attr('stroke-width', 3);
-	animateStroke.call(this, day);
-}
+			// move overlapping time blocks into the foreground
+			conflictBlocks.forEach(block => {
+				d3.select(block.rect)
+					.classed('no-hover', true)
+					.style('opacity', 0.0)
+					.raise()
+					.transition().duration(500).ease(d3.easeLinear)
+					.style('opacity', 0.65);
+				tooltipG.raise();
+			});
+			
+		} else {
+			checkbox.attr('data-selected', '');
+			checkmark
+				.transition().duration(200).ease(d3.easeLinear)
+				.attr('stroke-dashoffset', 0);
 
-function daySelectRectMouseOut(day) {
-	day.animate = false;
-	const strokeColor = day.selected ? '#57e057' : 'black';
-	const strokeWidth = day.selected ? 3 : 1;
-	d3.select(this).interrupt();
-	d3.select(this)
-		.attr('stroke-width', strokeWidth)
-		.attr('stroke', strokeColor);
-}
-
-function animateStroke(datum) {
-	if (datum.animate) {
-		const darkColor = datum.selected ? '#5f1d32' : '#57aa57';
-		const brightColor = datum.selected ? '#f185a8' : '#57e057';
-		d3.select(this)
-			.transition().duration(200).ease(d3.easeBack)
-			// .attr('stroke-width', 1)
-			.attr('stroke', darkColor)
-			.transition().duration(200).ease(d3.easeBack)
-			// .attr('stroke-width', 3)
-			.attr('stroke', brightColor)
-			.on('end', animateStroke);
-	}
+			// move overlapping time blocks into the background
+			conflictBlocks.forEach(block =>
+				d3.select(block.rect)
+					.transition().duration(500).ease(d3.easeLinear)
+					.style('opacity', 0.0)
+					.on('end', function() {
+						d3.select(this)
+							.classed('no-hover', false)
+							.lower()
+							.style('opacity', null);
+					})
+			)
+		}
+	});
+	
 }
 
 function showOverwriteCheckbox() {
@@ -241,6 +228,111 @@ function showOverwriteCheckbox() {
 		.attr('stroke-dashoffset', checkmarkLength);
 }
 
+function bringBlockRectsToFront(timeBlocks) {
+	timeBlocks.forEach(block =>
+		d3.select(block.rect)
+			.attr('data-conflict-block', '')
+			.classed('no-hover', true)
+			.style('opacity', 0.0)
+			.raise()
+			.transition().duration(500).ease(d3.easeLinear)
+			.style('opacity', 0.65)
+	);
+}
+
+function animateStroke(datum) {
+	if (datum.animate) {
+		const darkColor = datum.selected ? '#5f1d32' : '#57aa57';
+		const brightColor = datum.selected ? '#f185a8' : '#57e057';
+		d3.select(this)
+			.transition().duration(200).ease(d3.easeBack)
+			// .attr('stroke-width', 1)
+			.attr('stroke', darkColor)
+			.transition().duration(200).ease(d3.easeBack)
+			// .attr('stroke-width', 3)
+			.attr('stroke', brightColor)
+			.on('end', animateStroke);
+	}
+}
+
+/** Determines which time blocks in the active schedule conflict with
+ * the time block represented by the rect svg argument. */
+function getConflictingBlocks(timeBlockRect) {
+	const daySquare = d3.select(timeBlockRect.parentNode);
+	const scale = daySquare.datum().scale;
+	const schedule = timeBlockService.getActiveWeeklySchedule();
+	const rectY = +d3.select(timeBlockRect).attr('y');
+	const rectHeight = +d3.select(timeBlockRect).attr('height');
+	const rectStartTime = scale.invert(rectY);
+	const rectEndTime = scale.invert(rectY + rectHeight);
+
+	return schedule.getConflictingBlocks(rectStartTime, rectEndTime);
+}
+
+// --------------------------- Event Handlers --------------------------- \\
+
+function daySelectSquareClicked(day) {
+	if (!day.selected) {
+		day.selected = true;
+		day.animate = false;
+		// d3.select(this).attr('fill', '#57aa57');
+		const dimensions = svgService.getDimensions();
+
+		// create new rect on top of selected time block
+		const rectToCopy = d3.select('rect.time-block.selected');
+		const sourceDayIndex = rectToCopy.datum().dayIndex;
+		const sourceDaySquare = d3.select(rectToCopy.node().parentNode);
+		const targetDaySquare = d3.select(this.parentNode);
+		const targetDayIndex = day.index;
+		const daysAway = sourceDayIndex - targetDayIndex;
+		const copyRect = rectToCopy.node().cloneNode(true);
+		d3.select(copyRect).datum({ index: targetDayIndex, scale: svgService.getDayScale(targetDayIndex) });
+		d3.select(copyRect)
+			.classed('copy', true)
+			.attr('x', daysAway * dimensions.dayWidth);
+
+		// add new rect to target day square and animate it to move to that day
+		targetDaySquare.node().appendChild(copyRect);
+		d3.select(copyRect)
+			.transition().duration(1250).ease(d3.easeCubic)
+			.attr('x', 0)
+			.on('end', showOverwriteCheckbox);
+
+	} else {
+		// remove copy rect and tooltip for the clicked day
+		day.selected = false;
+		const daySquare = d3.select(this.parentNode);
+		daySquare.select('rect.copy')
+			.transition().duration(750).ease(d3.easeCubic)
+			.style('opacity', 0.0)
+			.remove();
+		daySquare.select('g.copy-tooltip')
+			.transition().duration(750).ease(d3.easeCubic)
+			.style('opacity', 0.0)
+			.remove();
+	}
+}
+
+function daySelectSquareMouseOver(day) {
+	day.animate = true;
+	const strokeColor = day.selected ? '#f185a8' : '#57e057';
+	d3.select(this.parentNode.parentNode).raise();
+	d3.select(this)
+		.attr('stroke', strokeColor)
+		.attr('stroke-width', 3);
+	animateStroke.call(this, day);
+}
+
+function daySelectSquareMouseOut(day) {
+	day.animate = false;
+	const strokeColor = day.selected ? '#57e057' : 'black';
+	const strokeWidth = day.selected ? 3 : 1;
+	d3.select(this).interrupt();
+	d3.select(this)
+		.attr('stroke-width', strokeWidth)
+		.attr('stroke', strokeColor);
+}
+
 function overwriteCheckboxClicked() {
 	const tooltipG = d3.select(this);
 	const checkbox = tooltipG.select('.tooltip-checkbox');
@@ -249,23 +341,19 @@ function overwriteCheckboxClicked() {
 	const conflictBlocks = getConflictingBlocks(copyRect);
 	
 	if (checkbox.node().hasAttribute('data-selected')) {
+		// uncheck the checkbox
 		checkbox.attr('data-selected', null);
 		checkmark
 			.transition().duration(200).ease(d3.easeLinear)
 			.attr('stroke-dashoffset', checkmark.node().getTotalLength());
 
 		// move overlapping time blocks into the foreground
-		conflictBlocks.forEach(block => {
-			d3.select(block.rect)
-				.classed('no-hover', true)
-				.style('opacity', 0.0)
-				.raise()
-				.transition().duration(500).ease(d3.easeLinear)
-				.style('opacity', 0.65);
-			tooltipG.raise();
-		});
+		bringBlockRectsToFront(conflictBlocks);
+
+		tooltipG.raise();
 		
 	} else {
+		// check the checkbox
 		checkbox.attr('data-selected', '');
 		checkmark
 			.transition().duration(200).ease(d3.easeLinear)
@@ -284,19 +372,4 @@ function overwriteCheckboxClicked() {
 				})
 		)
 	}
-}
-
-/** Determines which time blocks in the active schedule  conflict with
- * the time block represented by the rect svg argument. */
-function getConflictingBlocks(timeBlockRect) {
-	const daySquare = d3.select(timeBlockRect.parentNode);
-	const scale = daySquare.datum().scale;
-	const schedule = timeBlockService.getActiveWeeklySchedule();
-	const rectY = +d3.select(timeBlockRect).attr('y');
-	const rectHeight = +d3.select(timeBlockRect).attr('height');
-	const rectStartTime = scale.invert(rectY);
-	const rectEndTime = scale.invert(rectY + rectHeight);
-	const conflictBlocks = schedule.getConflictingBlocks(rectStartTime, rectEndTime);
-
-	return conflictBlocks;
 }
