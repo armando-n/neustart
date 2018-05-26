@@ -1,6 +1,7 @@
 import 'babel-polyfill';
 import * as svgService from './dashboard-svg-service.es6.js';
 import * as timeBlockService from './timeblock-service.es6.js';
+import * as copyMode from './copy-mode.es6.js';
 
 window.addEventListener('load', init);
 
@@ -32,10 +33,11 @@ export function showPasteButtons() {
 
 export function showCopyButton() {
 	showAllButtons();
+	document.getElementById('toolbar-copy').classList.remove('pressed');
 	document.getElementById('toolbar-cancel').style.display = 'none';
 	document.getElementById('toolbar-paste').style.display = 'none';
 	document.getElementById('copy-overwrite').style.display = 'none';
-	document.querySelector('label[for="copy-overwrite"').style.display = 'none';
+	document.querySelector('label[for="copy-overwrite"]').style.display = 'none';
 }
 
 function showAllButtons(...exceptions) {
@@ -80,9 +82,12 @@ function copyClicked() {
 	const enableCopy = !this.classList.contains('pressed');
 	if (enableCopy)
 		this.classList.add('pressed');
-	else
+	else {
 		this.classList.remove('pressed');
-	svgService.setCopyMode(enableCopy);
+		clearButtons();
+	}
+
+	copyMode.setCopyMode(enableCopy);
 }
 
 function copyOverwriteClicked() {
@@ -94,20 +99,16 @@ function copyOverwriteClicked() {
 		boxesToClick = Array.from(document.querySelectorAll('.copy-tooltip .tooltip-checkbox[data-selected]'));
 
 	boxesToClick.forEach(checkboxNode => {
+		// select the various parts of the checkbox and day
 		const checkbox = d3.select(checkboxNode);
 		const checkmark = d3.select(checkboxNode.parentNode).select('.tooltip-checkmark');
 		const tooltipG = d3.select(checkboxNode.parentNode.parentNode);
 		const daySquare = d3.select(tooltipG.node().parentNode);
 		const dayIndex = daySquare.datum().index;
 		const copyRect = daySquare.select('.time-block.copy');
+		const scale = daySquare.datum().scale;
 
-		const scale = d3.scaleTime()
-			.domain([
-				moment().day(dayIndex).startOf('day').toDate(),
-				moment().day(dayIndex).endOf('day').toDate()
-			])
-			.range([0, svgService.getDimensions().dayHeight]);
-
+		// determine which blocks conflict with copy, if any
 		const rectY = +copyRect.attr('y');
 		const rectHeight = +copyRect.attr('height');
 		const rectStartTime = scale.invert(rectY);
@@ -156,7 +157,7 @@ function copyOverwriteClicked() {
 
 function cancelClicked() {
 	showCopyButton();
-	svgService.setCopyMode(false);
+	copyMode.setCopyMode(false);
 }
 
 function pasteClicked() {

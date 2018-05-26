@@ -6,8 +6,17 @@ import * as toolbar from './toolbar.es6.js';
 import WeeklySchedule from './weekly-schedule-model.es6.js';
 import { toNum, to12Hours, zPad } from './utils.es6.js';
 import WeeklyTimeBlock from './weekly-timeblock-model.es6.js';
+import * as copyMode from './copy-mode.es6.js';
 
 let mode = '';
+
+export function getMode() {
+	return mode;
+}
+
+export function setMode(newMode) {
+	mode = newMode;
+}
 
 export function createSvg(weeklySchedule) {
 	const dimensions = getDimensions();
@@ -133,46 +142,6 @@ export function createSvg(weeklySchedule) {
 		.attr('height', dimensions.dayHeight);
 }
 
-export function setCopyMode(enable = true) {
-	mode = enable ? 'copy' : '';
-
-	if (enable) {
-		showMessage('Select a time block to copy');
-	} else {
-		showMessage('');
-		d3.selectAll('rect.day-select').remove();
-		d3.select('rect.time-block.selected').classed('selected', false);
-		d3.selectAll('rect.time-block.no-hover').classed('no-hover', false);
-		d3.selectAll('g.day').each(datum => datum.selected = false);
-		d3.selectAll('rect.time-block.copy').remove();
-		d3.selectAll('g.day-square > .copy-tooltip').each(function() {
-			d3.select(this).selectAll('*').remove();
-			d3.select(this).remove();
-		});
-		toolbar.clearButtons();
-		d3.selectAll('rect[data-conflict-block]').attr('data-conflict-block', null);
-	}
-}
-
-export function completeCopyMode() {
-	mode = '';
-
-	// console.log('completeCopyMode data');
-	// console.log(d3.selectAll('rect.time-block.copy').data());
-	// d3.selectAll('rect.time-block.copy').data();
-
-	const dayIndexesToCopyTo = [];
-	d3.selectAll('g.day').each(function(day, index) {
-		const copies = d3.select(this).select('rect.time-block.copy');
-		if (!copies.empty())
-			dayIndexesToCopyTo.push(index);
-	});
-
-	// TODO overwrite value needed
-
-	setCopyMode(false);
-}
-
 export function setDeleteMode(enable = true) {
 	mode = enable ? 'delete' : '';
 	d3.selectAll('rect.time-block').classed('delete-mode', enable);
@@ -208,7 +177,7 @@ export function setFillMode(enable = true) {
 	}
 }
 
-function showMessage(message) {
+export function showMessage(message) {
 	document.getElementById('messages-to-user').textContent = message;
 }
 
@@ -244,210 +213,6 @@ function createEmptyBlocks() {
 	});
 }
 
-/** Creates selection rects above each day that animate on hover. */
-function showDaySelectionMode(...excludeDayIndexes) {
-	const dimensions = getDimensions();
-	d3.selectAll('g.day-square').each(function(day) {
-		if (excludeDayIndexes.indexOf(day.index) === -1) {
-			d3.select(this)
-				.append('rect')
-				.attr('class', 'day-select')
-				.attr('x', 0)
-				.attr('y', 0)
-				.attr('width', dimensions.dayWidth)
-				.attr('height', dimensions.dayHeight)
-				.attr('stroke', 'black')
-				.attr('stroke-width', 1)
-				.attr('fill', '#eeeeee')
-				.attr('fill-opacity', 0.6)
-				.style('cursor', 'pointer')
-				.on('mouseover', daySelectRectMouseOver)
-				.on('mouseout', daySelectRectMouseOut)
-				.on('click', function(day) {
-					if (!day.selected) {
-						day.selected = true;
-						day.animate = false;
-						// d3.select(this).attr('fill', '#57aa57');
-						const dimensions = getDimensions();
-
-						// create new rect on top of selected time block, then animate it to move to the selected day
-						const rectToCopy = d3.select('rect.time-block.selected');
-						const sourceDayIndex = rectToCopy.datum().dayIndex;
-						const sourceDaySquare = d3.select(rectToCopy.node().parentNode);
-						const targetDaySquare = d3.select(this.parentNode);
-						const targetDayIndex = day.index;
-						const copyRect = rectToCopy.node().cloneNode(true);
-						d3.select(copyRect).datum({ index: targetDayIndex, scale: getDayScale(targetDayIndex) });
-
-						const daysAway = sourceDayIndex - targetDayIndex;
-
-						d3.select(copyRect)
-							.classed('copy', true)
-							.attr('x', daysAway * dimensions.dayWidth);
-
-						targetDaySquare.node().appendChild(copyRect);
-						d3.select(copyRect)
-							.transition().duration(1250).ease(d3.easeCubic)
-							.attr('x', 0)
-							.on('end', function(targetDay) {
-								if (mode !== 'copy')
-									return;
-
-								d3.select(this).raise();
-
-								// determine which blocks in target day the copied block conflicts with, if any
-								const paddingV = 2.5;
-								const paddingH = 5;
-								const daySquare = d3.select(this.parentNode);
-								const schedule = timeBlockService.getActiveWeeklySchedule();
-								const rectY = +d3.select(this).attr('y');
-								const rectHeight = +d3.select(this).attr('height');
-								const rectStartTime = targetDay.scale.invert(rectY);
-								const rectEndTime = targetDay.scale.invert(rectY + rectHeight);
-								const conflictBlocks = schedule.getConflictingBlocks(rectStartTime, rectEndTime);
-
-								if (conflictBlocks.length === 0)
-									return;
-
-								// bring conflicting blocks to the front to show where they overlap the copy block
-								conflictBlocks.forEach(block =>
-									d3.select(block.rect)
-										.attr('data-conflict-block', '')
-										.classed('no-hover', true)
-										.style('opacity', 0.0)
-										.raise()
-										.transition().duration(500).ease(d3.easeLinear)
-										.style('opacity', 0.65)
-								);
-
-								// create overwrite checkbox for each copied block
-								// const tooltipG = d3.select(this.parentNode).append('g');
-								const tooltipG = daySquare.append('g')
-									.attr('class', 'copy-tooltip')
-									.style('cursor', 'pointer');
-								const tooltipBorder = tooltipG.append('rect');
-								const overwriteText = tooltipG.append('text');
-								const checkboxG = tooltipG.append('g');
-								const checkbox = checkboxG.append('rect');
-								const checkmark = checkboxG.append('path');
-								tooltipG.on('click', function() {
-									const checkbox = d3.select(this).select('.tooltip-checkbox');
-									const checkmark = d3.select(this).select('.tooltip-checkmark');
-									if (checkbox.node().hasAttribute('data-selected')) {
-										checkbox.attr('data-selected', null);
-										checkmark
-											.transition().duration(200).ease(d3.easeLinear)
-											.attr('stroke-dashoffset', checkmark.node().getTotalLength());
-
-										// move overlapping time blocks into the foreground
-										conflictBlocks.forEach(block => {
-											d3.select(block.rect)
-												.classed('no-hover', true)
-												.style('opacity', 0.0)
-												.raise()
-												.transition().duration(500).ease(d3.easeLinear)
-												.style('opacity', 0.65);
-											tooltipG.raise();
-										});
-										
-									} else {
-										checkbox.attr('data-selected', '');
-										checkmark
-											.transition().duration(200).ease(d3.easeLinear)
-											.attr('stroke-dashoffset', 0);
-
-										// move overlapping time blocks into the background
-										conflictBlocks.forEach(block =>
-											d3.select(block.rect)
-												.transition().duration(500).ease(d3.easeLinear)
-												.style('opacity', 0.0)
-												.on('end', function() {
-													d3.select(this)
-														.classed('no-hover', false)
-														.lower()
-														.style('opacity', null);
-												})
-										)
-									}
-								});
-
-								// text
-								overwriteText
-									.attr('class', 'tooltip-text')
-									.style('font-size', '0.75rem')
-									.attr('text-anchor', 'middle')
-									.text('Overwrite');
-								let textBBox = overwriteText.node().getBBox();
-								overwriteText
-									.style('opacity', 0.0)
-									.attr('x', dimensions.dayWidth/2)
-									.attr('y', +d3.select(this).attr('y') + textBBox.height + paddingV*2);
-								overwriteText.transition().duration(350).ease(d3.easeSin)
-									.style('opacity', 1.0)
-									.attr('y', +d3.select(this).attr('y') - paddingV*4);
-
-								// border
-								textBBox = overwriteText.node().getBBox();
-								tooltipBorder
-									.attr('class', 'tooltip-border')
-									.style('opacity', 0.0)
-									.attr('x', textBBox.x - paddingH - 16)
-									.attr('y', textBBox.y - paddingV)
-									.attr('width', textBBox.width + paddingH*2 + 16)
-									.attr('height', textBBox.height + paddingV*2);
-								tooltipBorder
-									.transition().duration(350).ease(d3.easeSin)
-									.style('opacity', 1.0)
-									.attr('y', textBBox.y - paddingV*7 - textBBox.height);
-
-
-								// checkbox
-								const checkboxX = textBBox.x - 16;
-								const checkboxYStart = +d3.select(this).attr('y') + textBBox.height + paddingV*2 - 10.5;
-								const checkboxYEnd = +d3.select(this).attr('y') - paddingV*4 - 10.5;
-								checkbox
-									.attr('class', 'tooltip-checkbox')
-									.attr('x', 0)
-									.attr('y', 0)
-									.attr('width', 12.5).attr('height', 12.5)
-									.attr('fill', '#4286f4')
-									.attr('rx', 2).attr('ry', 2)
-									.attr('stroke', '#2d4468')
-									.attr('stroke-width', 1);
-								checkboxG
-									.style('opacity', 0.0)
-									.attr('transform', `translate(${checkboxX}, ${checkboxYStart})`);
-								checkboxG.transition().duration(350).ease(d3.easeSin)
-									.style('opacity', 1.0)
-									.attr('transform', `translate(${checkboxX}, ${checkboxYEnd})`);
-								checkmark
-									.attr('class', 'tooltip-checkmark')
-									.attr('d', 'M 2.5 4.5 L 6.25 8 L 13.5 -1')
-									.attr('stroke', 'black')
-									.attr('stroke-width', 2)
-									.attr('fill', 'none');
-								const checkmarkLength = checkmark.node().getTotalLength();
-								checkmark
-									.attr('stroke-dasharray', `${checkmarkLength} ${checkmarkLength}`)
-									.attr('stroke-dashoffset', checkmarkLength);
-							});
-					} else {
-						day.selected = false;
-						const daySquare = d3.select(this.parentNode);
-						daySquare.select('rect.copy')
-							.transition().duration(750).ease(d3.easeCubic)
-							.style('opacity', 0.0)
-							.remove();
-						daySquare.select('g.copy-tooltip')
-							.transition().duration(750).ease(d3.easeCubic)
-							.style('opacity', 0.0)
-							.remove();
-					}
-				});
-		}
-	})
-}
-
 /** Animates dashed border around the svgElement assigned to 'this'.
  * The animation repeats so long as the datum's 'animate' property is truthy. */
 function animateDashes(datum) {
@@ -465,21 +230,6 @@ function animateDashes(datum) {
 				d3.select(this).attr('stroke-dashoffset', '0%');
 				animateDashes.call(this, datum);
 			});
-	}
-}
-
-function animateStroke(datum) {
-	if (datum.animate) {
-		const darkColor = datum.selected ? '#5f1d32' : '#57aa57';
-		const brightColor = datum.selected ? '#f185a8' : '#57e057';
-		d3.select(this)
-			.transition().duration(200).ease(d3.easeBack)
-			// .attr('stroke-width', 1)
-			.attr('stroke', darkColor)
-			.transition().duration(200).ease(d3.easeBack)
-			// .attr('stroke-width', 3)
-			.attr('stroke', brightColor)
-			.on('end', animateStroke);
 	}
 }
 
@@ -760,7 +510,7 @@ export function getDimensions() {
 // 		.range([0, getDimensions().dayHeight]);
 // }
 
-function getDayScale(dayIndex) {
+export function getDayScale(dayIndex) {
 	let scale;
 	d3.selectAll('g.day-square')
 		.filter(day => day.index === dayIndex)
@@ -877,7 +627,7 @@ function timeBlockClicked(timeBlock) {
 					.classed('no-hover', true);
 				d3.select(this).classed('selected', true);
 				showMessage('Select days to paste to');
-				showDaySelectionMode(timeBlock.dayIndex);
+				copyMode.showDaySelectionMode(timeBlock.dayIndex);
 			}
 			break;
 
@@ -1009,24 +759,4 @@ function fillBlockClick(fillBlock) {
 		() => { setFillMode(false); setWeeklyData(); },
 		() => setFillMode(false)
 	);
-}
-
-function daySelectRectMouseOver(day) {
-	day.animate = true;
-	const strokeColor = day.selected ? '#f185a8' : '#57e057';
-	d3.select(this.parentNode.parentNode).raise();
-	d3.select(this)
-		.attr('stroke', strokeColor)
-		.attr('stroke-width', 3);
-	animateStroke.call(this, day);
-}
-
-function daySelectRectMouseOut(day) {
-	day.animate = false;
-	const strokeColor = day.selected ? '#57e057' : 'black';
-	const strokeWidth = day.selected ? 3 : 1;
-	d3.select(this).interrupt();
-	d3.select(this)
-		.attr('stroke-width', strokeWidth)
-		.attr('stroke', strokeColor);
 }
