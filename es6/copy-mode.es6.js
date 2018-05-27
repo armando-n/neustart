@@ -57,18 +57,21 @@ export function showDaySelectionSquares(...excludeDayIndexes) {
 export function completeCopyMode() {
 	svgService.setMode('');
 
-	// console.log('completeCopyMode data');
-	// console.log(d3.selectAll('rect.time-block.copy').data());
+	console.log('completeCopyMode data');
+	console.log(d3.selectAll('rect.time-block.copy').data());
 	// d3.selectAll('rect.time-block.copy').data();
 
-	const dayIndexesToCopyTo = [];
-	d3.selectAll('g.day').each(function(day, index) {
+	const blockToCopy = d3.select('.time-block.selected').datum();
+	const daysToCopyTo = [];
+	d3.selectAll('g.day').each(function(day) {
 		const copies = d3.select(this).select('rect.time-block.copy');
+		const checkbox = d3.select(this).select('.tooltip-checkbox');
+		const overwrite = !checkbox.empty() && checkbox.node().hasAttribute('data-selected');
 		if (!copies.empty())
-			dayIndexesToCopyTo.push(index);
+			daysToCopyTo.push({ index: day.index, overwrite });
 	});
 
-	// TODO overwrite value needed
+	timeBlockService.copy(blockToCopy, daysToCopyTo);
 
 	setCopyMode(false);
 }

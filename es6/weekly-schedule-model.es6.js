@@ -91,17 +91,21 @@ export class WeeklySchedule {
 		return this.daysWithTimeBlocks[dayIndex].values[blockIndex];
 	}
 
-	/** Copies the given time block to each day indicated by the dayIndexes rest parameter.
+	/** Copies the given time block to each day indicated by the dayIndexesAndOverwrites argument.
 	 * The overwrite flag determines whether or not the copied block will overwrite existing
-	 * blocks when overlap occurs. Any blocks deleted during this process are returned in an
+	 * blocks when overlap occurs. Any blocks deleted during this process are returned in an   // TODO UPDATE THIS COMMENT !!!!!!
 	 * array. Any new blocks created during this process can be identified by their lack of
 	 * a blockID.  Use findUnidentifiedBlocks() method to easily access them. */
-	copyBlock(timeBlock, overwrite = true, ...dayIndexes) {
+	copyBlock(timeBlock, dayIndexesAndOverwrites) {
+		const createdBlocks = [];
+		const updatedBlocks = [];
 		const deletedBlocks = [];
 
-		// copy time block to each day of the week matching the given dayIndexes
-		dayIndexes.forEach(dayIndex => {
+		// copy time block to each day of the week matching the given day indexes
+		dayIndexesAndOverwrites.forEach(dayIndexAndOverwrite => {
 			let addCopyBlock = true;
+			const dayIndex = dayIndexAndOverwrite.index;
+			const overwrite = dayIndexAndOverwrite.overwrite;
 			const day = this.daysWithTimeBlocks[dayIndex];
 			const copyBlock = timeBlock.copy(dayIndex);
 
@@ -128,6 +132,7 @@ export class WeeklySchedule {
 							newBlock.endMoment = copyBlock.endMoment;
 
 							this.daysWithTimeBlocks[dayIndex].values.push(newBlock);                  // TODO this will need to be added to the database somehow/somewhen
+							createdBlocks.push(newBlock);
 						}
 
 						// move copy block end time to current block start time
@@ -146,9 +151,10 @@ export class WeeklySchedule {
 				) {
 					if (overwrite) {
 						// move current block start time to copy block end time (or delete current block if doing so would make it's start time >= it's end time)
-						if (!copyBlock.endMoment.isSame(currentBlock.endMoment, 'minute') && !copyBlock.endMoment.isAfter(currentBlock.endMoment, 'minute'))
+						if (!copyBlock.endMoment.isSame(currentBlock.endMoment, 'minute') && !copyBlock.endMoment.isAfter(currentBlock.endMoment, 'minute')) {
 							currentBlock.startMoment = copyBlock.endMoment;
-						else
+							updatedBlocks.push(currentBlock);
+						} else
 							deletedBlocks.push(this.daysWithTimeBlocks[dayIndex].values.splice(blockIndex, 1));
 					} else {
 						// move copy block end time to current block start time
@@ -169,9 +175,11 @@ export class WeeklySchedule {
 						newBlock.startMoment = copyBlock.endMoment;
 						newBlock.endMoment = currentBlock.endMoment;
 						this.daysWithTimeBlocks[dayIndex].values.push(newBlock);                  // TODO this will need to be added to the database somehow/somewhen
+						createdBlocks.push(newBlock);
 
 						// move current block end time to copy block start time
 						currentBlock.endMoment = copyBlock.startMoment;
+						updatedBlocks.push(currentBlock);
 					} else {
 						// delete copy block (this makes single-block copy not occur at all)
 						addCopyBlock = false;
@@ -190,6 +198,7 @@ export class WeeklySchedule {
 					if (overwrite) {
 						// move current block end time to copy block start time
 						currentBlock.endMoment = copyBlock.startMoment;
+						updatedBlocks.push(currentBlock);
 					} else {
 						// move copy block start time to current block end time
 						copyBlock.startMoment = currentBlock.endMoment;
@@ -203,10 +212,11 @@ export class WeeklySchedule {
 			if (addCopyBlock) {
 				this.daysWithTimeBlocks[dayIndex].values.push(copyBlock);
 				this.daysWithTimeBlocks[dayIndex].values.sort(comparator);
+				createdBlocks.push(copyBlock);
 			}
 		});
 
-		return deletedBlocks;
+		return { createdBlocks, updatedBlocks, deletedBlocks };
 	}
 
 	/** Given a time range, searches the day of the time range for

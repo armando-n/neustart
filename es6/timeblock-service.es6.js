@@ -49,6 +49,36 @@ export function remove(timeBlock) {
 	return getActiveWeeklySchedule();
 }
 
-export function paste(blocksToCopy, overwrite = false) {
-	
+export function copy(blockToCopy, daysToCopyTo) {
+	const copyResults = getActiveWeeklySchedule().copyBlock(blockToCopy, daysToCopyTo);
+	console.log('copyResults');
+	console.log(copyResults);
+	const operations = [];
+
+	copyResults.deletedBlocks.forEach(deletedBlock =>
+		operations.push({
+			method: 'DELETE',
+			body: deletedBlock.blockID
+		})
+	);
+
+	copyResults.updatedBlocks.forEach(updatedBlock =>
+		operations.push({
+			method: 'PUT',
+			body: new WeeklyTimeBlock(updatedBlock)
+		})
+	);
+
+	copyResults.createdBlocks.forEach(createdBlock =>
+		operations.push({
+			method: 'POST',
+			body: createdBlock
+		})
+	);
+
+	const responsePromise = ajaxService.post('/weeklytimeblocks', operations)
+		.then(response => {
+			console.log('response:');
+			console.log(response);
+		});
 }
