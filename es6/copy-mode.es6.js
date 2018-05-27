@@ -85,23 +85,17 @@ export function setOverwriteAll(overwriteAll = true) {
 		boxesToClick = Array.from(document.querySelectorAll('.copy-tooltip .tooltip-checkbox[data-selected]'));
 
 	boxesToClick.forEach(checkboxNode => {
-		// select the various parts of the checkbox and day
+		// select the various parts of the checkbox
 		const checkbox = d3.select(checkboxNode);
 		const checkmark = d3.select(checkboxNode.parentNode).select('.tooltip-checkmark');
 		const tooltipG = d3.select(checkboxNode.parentNode.parentNode);
-		const daySquare = d3.select(tooltipG.node().parentNode);
-		const dayIndex = daySquare.datum().index;
-		const copyRect = daySquare.select('.time-block.copy');
-		const scale = daySquare.datum().scale;
 
 		// determine which blocks conflict with copy, if any
-		const rectY = +copyRect.attr('y');
-		const rectHeight = +copyRect.attr('height');
-		const rectStartTime = scale.invert(rectY);
-		const rectEndTime = scale.invert(rectY + rectHeight);
-		const conflictBlocks = timeBlockService.getActiveWeeklySchedule().getConflictingBlocks(rectStartTime, rectEndTime);
+		const copyRect = d3.select(tooltipG.node().parentNode).select('.time-block.copy').node();
+		const conflictBlocks = getConflictingBlocks(copyRect);
 
 		if (!overwriteAll) {
+			// uncheck the checkbox
 			checkbox.attr('data-selected', null);
 			checkmark
 				.transition().duration(200).ease(d3.easeLinear)
@@ -119,6 +113,7 @@ export function setOverwriteAll(overwriteAll = true) {
 			});
 			
 		} else {
+			// check the checkbox
 			checkbox.attr('data-selected', '');
 			checkmark
 				.transition().duration(200).ease(d3.easeLinear)
@@ -256,7 +251,7 @@ function animateStroke(datum) {
 }
 
 /** Determines which time blocks in the active schedule conflict with
- * the time block represented by the rect svg argument. */
+ * the time block represented by the rect svg argument, if any. */
 function getConflictingBlocks(timeBlockRect) {
 	const daySquare = d3.select(timeBlockRect.parentNode);
 	const scale = daySquare.datum().scale;
