@@ -31,7 +31,7 @@ export function showPasteButtons() {
 	document.querySelector('label[for="copy-overwrite"').style.display = 'inline-block';
 }
 
-export function showCopyButton() {
+export function removeCopyModeButtons() {
 	showAllButtons();
 	document.getElementById('toolbar-copy').classList.remove('pressed');
 	document.getElementById('toolbar-cancel').style.display = 'none';
@@ -80,11 +80,14 @@ function fillClicked() {
 
 function copyClicked() {
 	const enableCopy = !this.classList.contains('pressed');
-	if (enableCopy)
+	if (enableCopy) {
+		hideAllButtons();
+		document.getElementById('toolbar-copy').style.display = 'inline-block';
+		document.getElementById('toolbar-cancel').style.display = 'inline-block';
 		this.classList.add('pressed');
+	}
 	else {
-		this.classList.remove('pressed');
-		clearButtons();
+		removeCopyModeButtons();
 	}
 
 	copyMode.setCopyMode(enableCopy);
@@ -95,7 +98,7 @@ function copyOverwriteClicked() {
 }
 
 function cancelClicked() {
-	showCopyButton();
+	removeCopyModeButtons();
 	copyMode.setCopyMode(false);
 }
 

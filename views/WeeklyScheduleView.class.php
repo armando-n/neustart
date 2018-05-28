@@ -3,7 +3,7 @@ class WeeklyScheduleView {
 
 	/** Returns a JSON response containing all active weekly
 	 * time blocks for the active profile of the current user.
-	 * if $echoOutput is given and false, the array of active
+	 * If $echoOutput is given and false, the array of active
 	 * weekly time blocks is returned directly instead. */
 	public static function show($echoOutput = true) {
 		header("Content-Type: application/json; charset=UTF-8");

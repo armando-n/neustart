@@ -25,8 +25,8 @@ class DashboardView {
 		<div id="toolbar">
 			<div id="toolbar-buttons">
 				<button id="toolbar-fill" class="toggle-button" type="button">Fill</button>
-				<button id="toolbar-copy" class="toggle-button" type="button">Copy</button>
 				<button id="toolbar-cancel" class="toggle-button" type="button">Cancel</button>
+				<button id="toolbar-copy" class="toggle-button" type="button">Copy</button>
 				<button id="toolbar-paste" class="toggle-button" type="button">Paste</button>
 				<input id="copy-overwrite" type="checkbox">
 				<label for="copy-overwrite">Overwrite all</label>

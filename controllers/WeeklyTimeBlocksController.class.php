@@ -35,7 +35,7 @@ class WeeklyTimeBlocksController extends Controller {
 
 	/** Stores a new time block created from POST data. Data can be manually
 	 * passed in via the $args parameter. Returns a json response indicating
-	 * sucess or failure. The new time block is also returned in the json,
+	 * success or failure. The new time block is also returned in the json,
 	 * with it's automatically assigned ID included. This will be needed in
 	 * future requests to access the new time block. */
 	private static function add($args = NULL) {
@@ -58,20 +58,19 @@ class WeeklyTimeBlocksController extends Controller {
 
 	/** Edits the time block in the database using PUT data. The blockID in the PUT data is
 	 * used to determine which time block to edit. Data can be manually passed in via the $args
-	 * parameter.   Returns a json response indicating sucess or failure. */
+	 * parameter. Returns a json response indicating success or failure. */
 	private static function edit($args = NULL) {
-		// make sure url contains a time block ID number
-		if (!isset($_SESSION['resourceID']))
-			return self::jsonError('Cannot edit weekly time block: missing blockID');
-		if (!is_numeric($_SESSION['resourceID']))
-			return self::jsonError('Cannot edit weekly time block: blockID is not a valid number');
-
 		if (is_null($args))
 			$args = json_decode(file_get_contents('php://input'), true);
 
 		if (!isset($args))
-			return self::jsonError('Cannot edit weekly time block: missing post data');
-		$args['blockID'] = $_SESSION['resourceID'];
+			return self::jsonError('Unable to edit time block: missing PUT data');
+		if (isset($_SESSION['resourceID']))
+			$args['blockID'] = $_SESSION['resourceID'];
+		if (!isset($args['blockID']))
+			return self::jsonError('Cannot edit weekly time block: missing blockID');
+		if (!is_numeric($args['blockID']))
+			return self::jsonError('Cannot edit weekly time block: blockID is not a valid number');
 
 		$timeBlock = new WeeklyTimeBlock($args);
 		if ($timeBlock->getErrorCount() > 0)
@@ -95,7 +94,6 @@ class WeeklyTimeBlocksController extends Controller {
 		if (!is_numeric($blockID))
 			return self::jsonError('Cannot delete weekly time block: blockID is not a valid number');
 
-		// $blockID = $_SESSION['resourceID'];
 		$success = WeeklyTimeBlocksDB::delete($blockID);
 		if (!$success)
 			return self::jsonError('An error occurred while attempting to delete weekly time block');
@@ -106,17 +104,14 @@ class WeeklyTimeBlocksController extends Controller {
 	/**   */
 	private static function executeMixedOperations() {
 		if (!isset($_POST) || !is_array($_POST) || count($_POST) <= 0)
-			return self::jsonError('Cannot perform mixex operations: post data missing or invalid.');
+			return self::jsonError('Cannot perform mixed operations: post data missing or invalid.');
 
 		$nestedResponses = array();
 		foreach ($_POST as $operation) {
 			switch ($operation['method']) {
 				case 'POST': $nestedResponses[] = json_decode(self::add($operation['body'])); break;
 				case 'GET': $nestedResponses[] = json_decode(self::get($operation['body'])); break;
-				case 'PUT':
-					$_SESSION['resourceID'] = $operation['body']['blockID'];
-					$nestedResponses[] = json_decode(self::edit($operation['body']));
-					break;
+				case 'PUT': $nestedResponses[] = json_decode(self::edit($operation['body'])); break;
 				case 'DELETE': $nestedResponses[] = json_decode(self::delete($operation['body'])); break;
 			}
 		}

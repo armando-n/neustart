@@ -76,7 +76,7 @@ export function completeCopyMode() {
 		.catch(error => console.log(error));
 
 	setCopyMode(false);
-	toolbar.showCopyButton();
+	toolbar.removeCopyModeButtons();
 }
 
 /** Checks or unchecks all copy overwrite checkboxes and moves conflicting time block
