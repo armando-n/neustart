@@ -51,8 +51,6 @@ export function remove(timeBlock) {
 
 export function copy(blockToCopy, daysToCopyTo) {
 	const copyResults = getActiveWeeklySchedule().copyBlock(blockToCopy, daysToCopyTo);
-	console.log('copyResults');
-	console.log(copyResults);
 	const operations = [];
 
 	copyResults.deletedBlocks.forEach(deletedBlock =>
@@ -76,9 +74,10 @@ export function copy(blockToCopy, daysToCopyTo) {
 		})
 	);
 
-	const responsePromise = ajaxService.post('/weeklytimeblocks', operations)
+	return ajaxService.post('/weeklytimeblocks', operations)
 		.then(response => {
-			console.log('response:');
-			console.log(response);
+			const newSchedule = new WeeklySchedule(response.schedule);
+			setActiveWeeklySchedule(newSchedule);
+			return newSchedule;
 		});
 }

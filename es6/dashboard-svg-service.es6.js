@@ -263,7 +263,7 @@ function cancelBlockCreation() {
 }
 
 /** Binds the weekly data, overriding previous data, then redraws the SVG elements. */
-function setWeeklyData(weeklySchedule = timeBlockService.getActiveWeeklySchedule()) {
+export function setWeeklyData(weeklySchedule = timeBlockService.getActiveWeeklySchedule()) {
 	if (!(weeklySchedule instanceof WeeklySchedule))
 		throw new Error('Invalid argument in SvgService.createSvg');
 
@@ -281,7 +281,8 @@ function setWeeklyData(weeklySchedule = timeBlockService.getActiveWeeklySchedule
 			.attr('transform', `translate(0, ${dimensions.marginTop})`);
 
 	// draw time blocks for each day
-	d3.selectAll('g.day-square').each(function(day) {
+	d3.selectAll('g.day').selectAll('g.day-square').data(weeklySchedule.daysWithTimeBlocks, day => day.index);
+	d3.selectAll('g.day').selectAll('g.day-square').each(function(day) {
 
 		// y-scale for the current day
 		const domainStart = moment().day(day.index).startOf('day').toDate();
@@ -297,6 +298,42 @@ function setWeeklyData(weeklySchedule = timeBlockService.getActiveWeeklySchedule
 		const blockRects = d3.select(this) // this is the <g> day-square element
 			.selectAll('rect.time-block')
 			.data(day => day.values, block => block.blockID); // values are time blocks
+
+		blockRects.each(function(block) {
+			if (!(block instanceof WeeklyTimeBlock))
+				throw new Error('bleh');
+
+			const blockRect = d3.select(this);
+			block.rect = this
+
+			// determine if start time was changed
+			const rectY = blockRect.attr('y');
+			const rectStartDate = yScale.invert(rectY);
+			const rectStartTime = moment(rectStartDate);
+			const isStartSame = rectStartTime.isSame(block.startTime, 'minute');
+
+			// determine if end time was changed
+			const rectEndY = toNum(blockRect.attr('y')) + toNum(blockRect.attr('height'));
+			const rectEndTime = moment(yScale.invert(rectEndY));
+			const isEndSame = rectEndTime.isSame(block.endTime, 'minute');
+
+			if (!isStartSame) {
+				blockRect.transition().duration(1000).ease(d3.easeExp)
+					.attr('y', block => yScale(block.startTime))
+					.attr('height', block => yScale(block.endTime) - yScale(block.startTime));
+			}
+
+			if (!isEndSame && isStartSame) {
+				blockRect.transition().duration(1000).ease(d3.easeExp)
+					.attr('height', block => yScale(block.endTime) - yScale(block.startTime));
+			}
+
+			// check if type of time block has changed (no text/calls, text/call only, both texts/calls)
+			if (!blockRect.classed(block.type)) {
+				WeeklyTimeBlock.blockTypes.forEach(type => blockRect.classed(type, false));
+				blockRect.classed(block.type, true);
+			}
+		});
 
 		blockRects.enter()
 			.append('rect')
@@ -370,41 +407,6 @@ function setWeeklyData(weeklySchedule = timeBlockService.getActiveWeeklySchedule
 						);
 					})
 				);
-
-		blockRects.each(function(block) {
-			if (!(block instanceof WeeklyTimeBlock))
-				throw new Error('bleh');
-
-			const blockRect = d3.select(this);
-
-			// determine if start time was changed
-			const rectY = blockRect.attr('y');
-			const rectStartDate = yScale.invert(rectY);
-			const rectStartTime = moment(rectStartDate);
-			const isStartSame = rectStartTime.isSame(block.startTime, 'minute');
-
-			// determine if end time was changed
-			const rectEndY = toNum(blockRect.attr('y')) + toNum(blockRect.attr('height'));
-			const rectEndTime = moment(yScale.invert(rectEndY));
-			const isEndSame = rectEndTime.isSame(block.endTime, 'minute');
-
-			if (!isStartSame) {
-				blockRect.transition().duration(1000).ease(d3.easeExp)
-					.attr('y', block => yScale(block.startTime))
-					.attr('height', block => yScale(block.endTime) - yScale(block.startTime));
-			}
-
-			if (!isEndSame && isStartSame) {
-				blockRect.transition().duration(1000).ease(d3.easeExp)
-					.attr('height', block => yScale(block.endTime) - yScale(block.startTime));
-			}
-
-			// check if type of time block has changed (no text/calls, text/call only, both texts/calls)
-			if (!blockRect.classed(block.type)) {
-				WeeklyTimeBlock.blockTypes.forEach(type => blockRect.classed(type, false));
-				blockRect.classed(block.type, true);
-			}
-		});
 
 		blockRects.exit()
 			.transition()
@@ -493,22 +495,6 @@ export function getDimensions() {
 		dayHeight,
 	}
 }
-
-// function createScale(dayIndex) {
-// 	let domainStart, domainEnd;
-
-// 	if (dayIndex !== undefined) {
-// 		domainStart = moment().day(dayIndex).startOf('day').toDate();
-// 		domainEnd = moment().day(dayIndex).endOf('day').toDate();
-// 	} else {
-// 		domainStart = moment().startOf('day').toDate();
-// 		domainEnd = moment().endOf('day').toDate();
-// 	}
-
-// 	return d3.scaleTime()
-// 		.domain([domainStart, domainEnd])
-// 		.range([0, getDimensions().dayHeight]);
-// }
 
 export function getDayScale(dayIndex) {
 	let scale;
@@ -689,16 +675,6 @@ function emptySpaceMouseMove() {
 		Hover.showTopLine(snapTo.y, snapTo.x, snapTo.y - 10, lineText);
 	}
 }
-
-/** Create time block from new rect data and show add block modal using the new block. */
-// function emptySpaceMouseUp() {
-// 	if (mode === 'creating') {
-// 		Hover.hideBotomLine();
-// 		const newTimeBlock = createBlockFromNewRect(this, scale);
-// 		showAddBlockModal(newTimeBlock);
-// 	}
-// 	mode = '';
-// }
 
 /** Create time block from new rect data and show add block modal using the new block. */
 function emptySpaceMouseOut() {

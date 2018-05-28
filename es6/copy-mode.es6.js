@@ -71,9 +71,12 @@ export function completeCopyMode() {
 			daysToCopyTo.push({ index: day.index, overwrite });
 	});
 
-	timeBlockService.copy(blockToCopy, daysToCopyTo);
+	timeBlockService.copy(blockToCopy, daysToCopyTo)
+		.then(() => svgService.setWeeklyData())
+		.catch(error => console.log(error));
 
 	setCopyMode(false);
+	toolbar.showCopyButton();
 }
 
 /** Checks or unchecks all copy overwrite checkboxes and moves conflicting time block
@@ -199,6 +202,7 @@ function daySelectSquareClicked(day) {
 		const copyRect = rectToCopy.node().cloneNode(true);
 		d3.select(copyRect).datum({ index: targetDayIndex, scale: svgService.getDayScale(targetDayIndex) });
 		d3.select(copyRect)
+			.classed('selected', false)
 			.classed('copy', true)
 			.attr('x', daysAway * dimensions.dayWidth);
 

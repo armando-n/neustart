@@ -91,11 +91,12 @@ export class WeeklySchedule {
 		return this.daysWithTimeBlocks[dayIndex].values[blockIndex];
 	}
 
-	/** Copies the given time block to each day indicated by the dayIndexesAndOverwrites argument.
-	 * The overwrite flag determines whether or not the copied block will overwrite existing
-	 * blocks when overlap occurs. Any blocks deleted during this process are returned in an   // TODO UPDATE THIS COMMENT !!!!!!
-	 * array. Any new blocks created during this process can be identified by their lack of
-	 * a blockID.  Use findUnidentifiedBlocks() method to easily access them. */
+	/** Copies the given time block to each day indicated by the dayIndexesAndOverwrites argument,
+	 * which is an array of objects. Each object indicates a day index to copy the block to w/the
+	 * 'index' property.  The objects also indcate whether or not to overwrite any existing time
+	 * blocks for that day where there is overlap using the 'overwrite' property. An object is
+	 * returned w/three array properties named 'createdBlocks', 'updatedBlocks', and 'deletedBlocks'.
+	 * Each array contains blocks that were created, updated, and deleted during the copying process. */
 	copyBlock(timeBlock, dayIndexesAndOverwrites) {
 		const createdBlocks = [];
 		const updatedBlocks = [];
@@ -115,14 +116,18 @@ export class WeeklySchedule {
 
 				// copy block completely encompasses current block
 				if (
-					copyBlock.startMoment.isBefore(currentBlock.startMoment, 'minute') && (
+					(
+						copyBlock.startMoment.isBefore(currentBlock.startMoment, 'minute') ||
+						copyBlock.startMoment.isSame(currentBlock.startMoment, 'minute')
+					) &&
+					(
 						copyBlock.endMoment.isAfter(currentBlock.endMoment, 'minute') ||
 						copyBlock.endMoment.isSame(currentBlock.endMoment, 'minute')
 					)
 				) {
 					if (overwrite) {
 						// delete current block
-						deletedBlocks.push(this.daysWithTimeBlocks[dayIndex].values.splice(blockIndex, 1));
+						deletedBlocks.push(this.daysWithTimeBlocks[dayIndex].values.splice(blockIndex, 1).shift());
 					} else {
 						// create a new block from current block end time to copy block end time (or don't, if they're the same)
 						if (!currentBlock.endMoment.isSame(copyBlock.endMoment, 'minute')) {
@@ -130,8 +135,6 @@ export class WeeklySchedule {
 							newBlock.blockID = undefined;
 							newBlock.startMoment = currentBlock.endMoment;
 							newBlock.endMoment = copyBlock.endMoment;
-
-							this.daysWithTimeBlocks[dayIndex].values.push(newBlock);                  // TODO this will need to be added to the database somehow/somewhen
 							createdBlocks.push(newBlock);
 						}
 
@@ -154,8 +157,9 @@ export class WeeklySchedule {
 						if (!copyBlock.endMoment.isSame(currentBlock.endMoment, 'minute') && !copyBlock.endMoment.isAfter(currentBlock.endMoment, 'minute')) {
 							currentBlock.startMoment = copyBlock.endMoment;
 							updatedBlocks.push(currentBlock);
-						} else
-							deletedBlocks.push(this.daysWithTimeBlocks[dayIndex].values.splice(blockIndex, 1));
+						} else {
+							deletedBlocks.push(this.daysWithTimeBlocks[dayIndex].values.splice(blockIndex, 1).shift());
+						}
 					} else {
 						// move copy block end time to current block start time
 						copyBlock.endMoment = currentBlock.startMoment;
@@ -170,11 +174,9 @@ export class WeeklySchedule {
 				) {
 					if (overwrite) {
 						// create a new block from copy block end time to current block end time
-						const newBlock = new WeeklyTimeBlock(currentBlock);
-						newBlock.blockID = undefined;
+						const newBlock = currentBlock.copy();
 						newBlock.startMoment = copyBlock.endMoment;
 						newBlock.endMoment = currentBlock.endMoment;
-						this.daysWithTimeBlocks[dayIndex].values.push(newBlock);                  // TODO this will need to be added to the database somehow/somewhen
 						createdBlocks.push(newBlock);
 
 						// move current block end time to copy block start time
@@ -193,7 +195,10 @@ export class WeeklySchedule {
 				else if (
 					copyBlock.startMoment.isAfter(currentBlock.startMoment, 'minute') &&
 					copyBlock.startMoment.isBefore(currentBlock.endMoment, 'minute') &&
-					copyBlock.endMoment.isAfter(currentBlock.endMoment, 'minute')
+					(
+						copyBlock.endMoment.isAfter(currentBlock.endMoment, 'minute') ||
+						copyBlock.endMoment.isSame(currentBlock.endMoment, 'minute')
+					)
 				) {
 					if (overwrite) {
 						// move current block end time to copy block start time
@@ -209,10 +214,14 @@ export class WeeklySchedule {
 				}
 			}
 
+			addCopyBlock = addCopyBlock && !copyBlock.startMoment.isSame(copyBlock.endMoment, 'minute');
+
 			if (addCopyBlock) {
-				this.daysWithTimeBlocks[dayIndex].values.push(copyBlock);
-				this.daysWithTimeBlocks[dayIndex].values.sort(comparator);
 				createdBlocks.push(copyBlock);
+				createdBlocks.forEach(block => this.daysWithTimeBlocks[dayIndex].values.push(block));
+				this.daysWithTimeBlocks[dayIndex].values.sort(comparator);
+			} else {
+				createdBlocks.length = 0;
 			}
 		});
 
@@ -238,20 +247,6 @@ export class WeeklySchedule {
 		});
 
 		return conflictBlocks;
-	}
-
-	/** Returns an array containing any time blocks found in this schedule that have no block ID. */
-	findUnidentifiedBlocks() {
-		const unidentifiedBlocks = [];
-		
-		for (let day of this.daysWithTimeBlocks) {
-			for (let block of day.values) {
-				if (!block.blockID)
-					unidentifiedBlocks.push(block);
-			}
-		}
-
-		return unidentifiedBlocks;
 	}
 
 	/** Returns top & bottom boundaries (as moments) for the time block with the given ID.

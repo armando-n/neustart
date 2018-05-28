@@ -14,7 +14,7 @@ class WeeklyTimeBlocksController extends Controller {
 		$isDeleteRequest = $_SERVER['REQUEST_METHOD'] === 'DELETE';
 		$response = null;
 
-		if ($isPostRequest) $response = self::determineAction();
+		if ($isPostRequest) $response = self::determinePostAction();
 		else if ($isPutRequest) $response = self::edit();
 		else if ($isDeleteRequest) $response = self::delete();
 
@@ -22,22 +22,22 @@ class WeeklyTimeBlocksController extends Controller {
 			echo $response;
 	}
 
-	private static function determineAction() {
+	private static function determinePostAction() {
 		$_POST = json_decode(file_get_contents('php://input'), true);
-
 		if (!isset($_POST))
 			return self::jsonError('Unable to determine time block action: missing post data');
 
-		if (is_array($_POST))
-			return self::executeMixedOperations();
+		if (isset($_POST['dayOfWeek']))
+			return self::add();
 
-		return self::add();
+		return self::executeMixedOperations();
 	}
 
-	/** Stores a new time block created from POST data. Returns a json response
-	 * indicating sucess or failure. The new time block is also returned
-	 * in the json, with it's automatically assigned ID included. This will be
-	 * needed in future requests to access the new time block. */
+	/** Stores a new time block created from POST data. Data can be manually
+	 * passed in via the $args parameter. Returns a json response indicating
+	 * sucess or failure. The new time block is also returned in the json,
+	 * with it's automatically assigned ID included. This will be needed in
+	 * future requests to access the new time block. */
 	private static function add($args = NULL) {
 		if (is_null($args))
 			$args = $_POST;
@@ -57,21 +57,21 @@ class WeeklyTimeBlocksController extends Controller {
 	}
 
 	/** Edits the time block in the database using PUT data. The blockID in the PUT data is
-	 * used to determine which time block to edit. Returns a json response indicating sucess or
-	 * failure. */
+	 * used to determine which time block to edit. Data can be manually passed in via the $args
+	 * parameter.   Returns a json response indicating sucess or failure. */
 	private static function edit($args = NULL) {
 		// make sure url contains a time block ID number
-		// if (!isset($_SESSION['resourceID']))
-		// 	return self::jsonError('Cannot edit weekly time block: missing blockID');
-		// if (!is_numeric($_SESSION['resourceID']))
-		// 	return self::jsonError('Cannot edit weekly time block: blockID is not a valid number');
+		if (!isset($_SESSION['resourceID']))
+			return self::jsonError('Cannot edit weekly time block: missing blockID');
+		if (!is_numeric($_SESSION['resourceID']))
+			return self::jsonError('Cannot edit weekly time block: blockID is not a valid number');
 
 		if (is_null($args))
 			$args = json_decode(file_get_contents('php://input'), true);
 
 		if (!isset($args))
 			return self::jsonError('Cannot edit weekly time block: missing post data');
-		// $_PUT['blockID'] = $_SESSION['resourceID'];
+		$args['blockID'] = $_SESSION['resourceID'];
 
 		$timeBlock = new WeeklyTimeBlock($args);
 		if ($timeBlock->getErrorCount() > 0)
@@ -85,6 +85,7 @@ class WeeklyTimeBlocksController extends Controller {
 	}
 
 	/** Deletes the time block with the given ID specified in the DELETE request url.
+	 * The block to delete can be manually specified via the $blockID parameter.
 	 * Returns a json response indicating success or failure. */
 	private static function delete($blockID = NULL) {
 		if (is_null($blockID))
@@ -102,15 +103,31 @@ class WeeklyTimeBlocksController extends Controller {
 		return self::jsonResponse(true);
 	}
 
+	/**   */
 	private static function executeMixedOperations() {
+		if (!isset($_POST) || !is_array($_POST) || count($_POST) <= 0)
+			return self::jsonError('Cannot perform mixex operations: post data missing or invalid.');
+
+		$nestedResponses = array();
 		foreach ($_POST as $operation) {
 			switch ($operation['method']) {
-				case 'POST': self::add($operation['body']); break;
-				case 'GET': self::get($operation['body']); break;
-				case 'PUT': self::edit($operation['body']); break;
-				case 'DELETE': self::delete($operation['body']); break;
+				case 'POST': $nestedResponses[] = json_decode(self::add($operation['body'])); break;
+				case 'GET': $nestedResponses[] = json_decode(self::get($operation['body'])); break;
+				case 'PUT':
+					$_SESSION['resourceID'] = $operation['body']['blockID'];
+					$nestedResponses[] = json_decode(self::edit($operation['body']));
+					break;
+				case 'DELETE': $nestedResponses[] = json_decode(self::delete($operation['body'])); break;
 			}
 		}
+
+		// create and return json response
+		$responseData = new stdClass();
+		$responseData->responses = $nestedResponses;
+		$responseData->schedule = WeeklyScheduleView::show(false);
+		$response = self::jsonResponse(true, $responseData, null, 'Copy completed. Check nested responses for any errors.');
+
+		return $response;
 	}
 }
 ?>
