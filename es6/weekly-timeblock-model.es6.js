@@ -64,6 +64,46 @@ class WeeklyTimeBlock {
 		return new WeeklyTimeBlock(this);
 	}
 
+	equals(otherWeeklyTimeBlock) {
+		console.log('equals entered');
+		if (this.isReceivingTexts === otherWeeklyTimeBlock.isReceivingTexts) {
+			console.log('pass 1');
+		}
+		if (this.isReceivingCalls === otherWeeklyTimeBlock.isReceivingCalls) {
+			console.log('pass 2');
+		}
+		if (this.isTextRepeating === otherWeeklyTimeBlock.isTextRepeating) {
+			console.log('pass 3');
+		}
+		if (this.isCallRepeating === otherWeeklyTimeBlock.isCallRepeating) {
+			console.log('pass 4');
+		}
+		if (this.repeatTextDuration === otherWeeklyTimeBlock.repeatTextDuration) {
+			console.log('pass 5');
+		}
+		if (this.repeatCallDuration === otherWeeklyTimeBlock.repeatCallDuration) {
+			console.log('pass 6');
+		}
+
+		if (
+			this.isReceivingTexts === otherWeeklyTimeBlock.isReceivingTexts &&
+			this.isReceivingCalls === otherWeeklyTimeBlock.isReceivingCalls &&
+			this.isTextRepeating === otherWeeklyTimeBlock.isTextRepeating &&
+			this.isCallRepeating === otherWeeklyTimeBlock.isCallRepeating
+		) {
+			const test1 = this.isTextRepeating && this.repeatTextDuration !== otherWeeklyTimeBlock.repeatTextDuration;
+			const test2 = this.isCallRepeating && this.repeatCallDuration !== otherWeeklyTimeBlock.repeatCallDuration;
+			if (test1)
+				return false;
+			if (test2)
+				return false;
+
+			return true;
+		}
+
+		return false;
+	}
+
 	get dayIndex() {
 		return WeeklyTimeBlock.days.indexOf(this.dayOfWeek);
 	}

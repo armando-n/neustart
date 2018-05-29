@@ -223,9 +223,18 @@ export class WeeklySchedule {
 			} else {
 				createdBlocks.length = 0;
 			}
+
+			// const mergeResults = mergeIdentAdjacentBlocks([dayIndex]);
+			// const mergeResults = mergeIdenticalAdjacentBlocks.call(this, [dayIndex]); // TODO how should this affect the returned crud arrays?
+			// updatedBlocks.push(...mergeResults.updatedBlocks);
+			// deletedBlocks.push(...mergeResults.deletedBlocks);
 		});
 
 		return { createdBlocks, updatedBlocks, deletedBlocks };
+	}
+
+	mergeIdentAdjacentBlocks(dayIndexes) {
+		return mergeIdenticalAdjacentBlocks.call(this, dayIndexes);
 	}
 
 	/** Given a time range, searches the day of the time range for
@@ -429,6 +438,49 @@ function findIndexOfBlock(timeBlocks, blockID) {
 	}
 
 	return targetIndex;
+}
+
+function mergeIdenticalAdjacentBlocks(days = [0, 1, 2, 3, 4, 5, 6, 7]) {
+	const updatedBlocksObj = {};
+	const deletedBlocksObj = {};
+
+	days = days.filter(dayIndex => this.daysWithTimeBlocks[dayIndex].values.length > 1);
+
+	days.forEach(dayIndex => {
+		const currentDay = this.daysWithTimeBlocks[dayIndex];
+
+		// iterate through the day's blocks in reverse so that removals do not affect traversal
+		for (let i = currentDay.values.length-2; i >= 0; i--) {
+			const currentBlock = currentDay.values[i];
+			const blockAfterCurrent = currentDay.values[i + 1];
+			const areWeeklyTimeBlocks = currentBlock instanceof WeeklyTimeBlock && blockAfterCurrent instanceof WeeklyTimeBlock;
+			const areAdjacent = currentBlock.endMoment.isSame(blockAfterCurrent.startMoment, 'minute');
+			const areIdentical = currentBlock.equals(blockAfterCurrent);
+
+			if (!areWeeklyTimeBlocks)
+				continue;
+
+			if (!areAdjacent)
+				continue;
+
+			if (areIdentical) {
+				// delete the block after the current block and remove it from the update object if present
+				currentDay.values.splice(i + 1, 1);
+				deletedBlocksObj[blockAfterCurrent.blockID] = blockAfterCurrent;
+				if (updatedBlocksObj[blockAfterCurrent.blockID])
+					updatedBlocksObj[blockAfterCurrent.blockID] = false;
+
+				// update the current block so that it covers the space left by the block after it
+				currentBlock.endMoment = blockAfterCurrent.endMoment;
+				updatedBlocksObj[currentBlock.blockID] = currentBlock;
+			}
+		}
+	});
+
+	const updatedBlocks = Object.values(updatedBlocksObj).filter(value => value instanceof WeeklyTimeBlock);
+	const deletedBlocks = Object.values(deletedBlocksObj);
+
+	return { updatedBlocks, deletedBlocks };
 }
 
 function comparator(blockA, blockB) {

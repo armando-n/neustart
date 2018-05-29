@@ -16,6 +16,8 @@ export function setActiveWeeklySchedule(weeklySchedule) {
 		throw new Error('Invalid argument passed to TimeBlockService.setActiveWeeklySchedule');
 
 	activeWeeklySchedule = weeklySchedule;
+
+	return activeWeeklySchedule;
 }
 
 export function add(timeBlock) {
@@ -75,9 +77,31 @@ export function copy(blockToCopy, daysToCopyTo) {
 	);
 
 	return ajaxService.post('/weeklytimeblocks', operations)
-		.then(response => {
-			const newSchedule = new WeeklySchedule(response.schedule);
-			setActiveWeeklySchedule(newSchedule);
-			return newSchedule;
-		});
+		.then(extractSchedule)
+		.then(setActiveWeeklySchedule)
 }
+
+export function mergeIdenticalAdjacentBlocks(schedule, dayIndexes) {
+	const mergeResults = schedule.mergeIdentAdjacentBlocks(dayIndexes);
+	const operations = [];
+
+	mergeResults.deletedBlocks.forEach(deletedBlock =>
+		operations.push({
+			method: 'DELETE',
+			body: deletedBlock.blockID
+		})
+	);
+
+	mergeResults.updatedBlocks.forEach(updatedBlock =>
+		operations.push({
+			method: 'PUT',
+			body: new WeeklyTimeBlock(updatedBlock)
+		})
+	);
+
+	return ajaxService.post('/weeklytimeblocks', operations)
+		.then(extractSchedule)
+		.then(setActiveWeeklySchedule);
+}
+
+function extractSchedule(response) { return new WeeklySchedule(response.schedule); }

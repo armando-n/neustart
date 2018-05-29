@@ -57,10 +57,6 @@ export function showDaySelectionSquares(...excludeDayIndexes) {
 export function completeCopyMode() {
 	svgService.setMode('');
 
-	console.log('completeCopyMode data');
-	console.log(d3.selectAll('rect.time-block.copy').data());
-	// d3.selectAll('rect.time-block.copy').data();
-
 	const blockToCopy = d3.select('.time-block.selected').datum();
 	const daysToCopyTo = [];
 	d3.selectAll('g.day').each(function(day) {
@@ -72,7 +68,13 @@ export function completeCopyMode() {
 	});
 
 	timeBlockService.copy(blockToCopy, daysToCopyTo)
-		.then(() => svgService.setWeeklyData())
+		// .then(() => svgService.setWeeklyData())
+		.then(schedule => {
+			svgService.setWeeklyData();
+
+			timeBlockService.mergeIdenticalAdjacentBlocks(schedule, daysToCopyTo.map(day => day.index))
+				.then(() => svgService.setWeeklyData());
+		})
 		.catch(error => console.log(error));
 
 	setCopyMode(false);
