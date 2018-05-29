@@ -30,6 +30,9 @@ class WeeklyTimeBlocksController extends Controller {
 		if (isset($_POST['dayOfWeek']))
 			return self::add();
 
+		if (isset($_SESSION['arguments']) && count($_SESSION['arguments']) > 1 && $_SESSION['arguments'][0] === 'copy')
+			return self::copy();
+
 		return self::executeMixedOperations();
 	}
 
@@ -101,7 +104,15 @@ class WeeklyTimeBlocksController extends Controller {
 		return self::jsonResponse(true);
 	}
 
-	/**   */
+	private static function copy() {
+		array_shift($_SESSION['arguments']);
+		$daysToCopyTo = $_SESSION['arguments'];
+
+	}
+
+	/** Given an array of associative arrays, each one containing 'method' and 'body' properties,
+	 * forwards the body to the action appropriate for the specified HTTP method.  A JSON response
+	 * is returned containing the individual responses of each operation in the 'responses' property. */
 	private static function executeMixedOperations() {
 		if (!isset($_POST) || !is_array($_POST) || count($_POST) <= 0)
 			return self::jsonError('Cannot perform mixed operations: post data missing or invalid.');

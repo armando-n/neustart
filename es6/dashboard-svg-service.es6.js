@@ -4,7 +4,7 @@ import * as timeBlockService from './timeblock-service.es6.js';
 import * as confirmModal from './confirm-modal.es6.js';
 import * as toolbar from './toolbar.es6.js';
 import WeeklySchedule from './weekly-schedule-model.es6.js';
-import { toNum, to12Hours, zPad } from './utils.es6.js';
+import { toNum, to12Hours, zPad, timeout } from './utils.es6.js';
 import WeeklyTimeBlock from './weekly-timeblock-model.es6.js';
 import * as copyMode from './copy-mode.es6.js';
 
@@ -281,7 +281,7 @@ export function setWeeklyData(weeklySchedule = timeBlockService.getActiveWeeklyS
 			.attr('transform', `translate(0, ${dimensions.marginTop})`);
 
 	// draw time blocks for each day
-	d3.selectAll('g.day').selectAll('g.day-square').data(weeklySchedule.daysWithTimeBlocks, day => day.index);
+	d3.selectAll('g.day-square').data(weeklySchedule.daysWithTimeBlocks, day => day.index);
 	d3.selectAll('g.day').selectAll('g.day-square').each(function(day) {
 
 		// y-scale for the current day
@@ -292,128 +292,24 @@ export function setWeeklyData(weeklySchedule = timeBlockService.getActiveWeeklyS
 			.range([0, dimensions.dayHeight]);
 
 		// store scale in day square datum for easy access/use
-		d3.select(this).each(day => day.scale = yScale);
+		day.scale = yScale;
+		// d3.select(this).each(day => day.scale = yScale);
 
-		// create time block rects
+		// bind time block data to rects
 		const blockRects = d3.select(this) // this is the <g> day-square element
 			.selectAll('rect.time-block')
 			.data(day => day.values, block => block.blockID); // values are time blocks
 
-		blockRects.each(function(block) {
-			if (!(block instanceof WeeklyTimeBlock))
-				throw new Error('bleh');
+		// blockRects.each(updateExistingBlockRects);
 
-			const blockRect = d3.select(this);
-			block.rect = this
-
-			// determine if start time was changed
-			const rectY = blockRect.attr('y');
-			const rectStartDate = yScale.invert(rectY);
-			const rectStartTime = moment(rectStartDate);
-			const isStartSame = rectStartTime.isSame(block.startTime, 'minute');
-
-			// determine if end time was changed
-			const rectEndY = toNum(blockRect.attr('y')) + toNum(blockRect.attr('height'));
-			const rectEndTime = moment(yScale.invert(rectEndY));
-			const isEndSame = rectEndTime.isSame(block.endTime, 'minute');
-
-			if (!isStartSame) {
-				blockRect.transition().duration(1000).ease(d3.easeExp)
-					.attr('y', block => yScale(block.startTime))
-					.attr('height', block => yScale(block.endTime) - yScale(block.startTime));
-			}
-
-			if (!isEndSame && isStartSame) {
-				blockRect.transition().duration(1000).ease(d3.easeExp)
-					.attr('height', block => yScale(block.endTime) - yScale(block.startTime));
-			}
-
-			// check if type of time block has changed (no text/calls, text/call only, both texts/calls)
-			if (!blockRect.classed(block.type)) {
-				WeeklyTimeBlock.blockTypes.forEach(type => blockRect.classed(type, false));
-				blockRect.classed(block.type, true);
-			}
-		});
-
-		blockRects.enter()
-			.append('rect')
-				.attr('class', block => 'time-block ' + timeBlockColorClass(block))
-				.attr('x', 0)
-				.attr('y', block => yScale(block.startTime))
-				.attr('rx', 8)
-				.attr('ry', 8)
-				.attr('width', dimensions.dayWidth)
-				.attr('height', block => yScale(block.endTime) - yScale(block.startTime))
-				.each(function(block) { block.rect = this })
-				.on('click', timeBlockClicked)
-				.call(d3.drag()
-					.on('drag', function(timeBlock) {
-						if (mode !== '')
-							return;
-
-						const schedule = timeBlockService.getActiveWeeklySchedule();
-						const newTopY = +d3.select(this).attr('y') + d3.event.dy;
-						const [topBoundaryY, bottomBoundaryY] = schedule.findGrowthBoundaries(timeBlock.blockID).map(yScale);
-						const newBottomY = +d3.select(this).attr('height') + newTopY;
-
-						// move/resize rect
-						if (newTopY < topBoundaryY)
-							d3.select(this).attr('y', topBoundaryY);
-						else if (newBottomY > bottomBoundaryY)
-							d3.select(this).attr('y', bottomBoundaryY - +d3.select(this).attr('height'));
-						else
-							d3.select(this).attr('y', newTopY);
-
-						// determine positioning/values for top/bottom lines/texts
-						const paddingV = 2.5;
-						const paddingH = 5;
-						const topTime = yScale.invert(newTopY);
-						const [topHours12, topMeridiem] = to12Hours(topTime.getHours());
-						const bottomTime =yScale.invert(newBottomY);
-						const [bottomHours12, bottomMeridiem] = to12Hours(bottomTime.getHours());
-						const x = d3.mouse(d3.select('.tracking-empty').node())[0];
-						const topLineText = `${zPad(topHours12)}:${zPad(topTime.getMinutes())} ${topMeridiem}`;
-						const bottomLineText = `${zPad(bottomHours12)}:${zPad(bottomTime.getMinutes())} ${bottomMeridiem}`;
-
-						// adjust top and bottom tracking lines/texts
-						Hover.showTopLine(newTopY, x, newTopY - 10, topLineText);
-						Hover.showBottomLine(newBottomY, x, newBottomY + 21, bottomLineText);
-					})
-					.on('end', function(timeBlock) {
-						if (mode !== '')
-							return;
-
-						const newTopY = +d3.select(this).attr('y') + d3.event.dy;
-						const newBottomY = +d3.select(this).attr('height') + newTopY;
-						const newStartTime = yScale.invert(newTopY);
-						const newEndTime = yScale.invert(newBottomY);
-
-						let tempModifiedTimeBlock = new WeeklyTimeBlock(timeBlock);
-						tempModifiedTimeBlock.startHour = newStartTime.getHours();
-						tempModifiedTimeBlock.startMinute = newStartTime.getMinutes();
-						tempModifiedTimeBlock.endHour = newEndTime.getHours();
-						tempModifiedTimeBlock.endMinute = newEndTime.getMinutes();
-
-						Hover.hideLines();
-
-						const editCanceled = () => d3.select(this)
-							.transition()
-							.duration(1000)
-							.delay(250)
-							.ease(d3.easeExp)
-							.attr('y', block => yScale(block.startTime));
-						setTimeout(() =>
-							timeBlockModal.show(tempModifiedTimeBlock, 'edit', setWeeklyData, editCanceled, 0)
-						);
-					})
-				);
-
-		blockRects.exit()
-			.transition()
-			.delay(200)
-			.duration(1250)
-			.style('opacity', 0.0)
-			.remove();
+		// ceate/update/delete time block rects
+		removeBlockRects(blockRects)
+			.then(updateExistingBlockRects)
+			.then(createBlockRects)
+			// .catch(error=> {
+			// 	console.log('error in time block rect crud promise');
+			// 	console.log(error);
+			// });
 	});
 }
 
@@ -525,6 +421,129 @@ function timeBlockColorClass(timeBlock) {
 	}
 }
 
+/** create needed new block rects */
+function createBlockRects(blockRects) {
+	blockRects.enter().append('rect')
+		.attr('class', block => 'time-block ' + timeBlockColorClass(block))
+		.attr('x', 0)
+		.attr('y', block => {
+			const scale = getDayScale(block.dayIndex);
+			return scale(block.startTime);
+		})
+		.attr('rx', 8)
+		.attr('ry', 8)
+		.attr('width', getDimensions().dayWidth)
+		.attr('height', block => {
+			const scale = getDayScale(block.dayIndex);
+			return scale(block.endTime) - scale(block.startTime);
+		})
+		.each(function(block) { block.rect = this })
+		.on('click', timeBlockClicked)
+		.call(
+			d3.drag()
+				.on('drag', timeBlockDragged)
+				.on('end', timeBlockDragEnded)
+		);
+}
+
+function updateExistingBlockRects(blockRects) {
+	let updateCompletePromise;
+
+	blockRects.each(function(block) {
+		if (!(block instanceof WeeklyTimeBlock))
+			throw new Error('bleh');
+
+		const scale = getDayScale(block.dayIndex);
+		const blockRect = d3.select(this);
+		block.rect = this
+
+		// determine if start time was changed
+		const rectY = blockRect.attr('y');
+		const rectStartDate = scale.invert(rectY);
+		const rectStartTime = moment(rectStartDate);
+		const isStartSame = rectStartTime.isSame(block.startTime, 'minute');
+
+		// determine if end time was changed
+		const rectEndY = toNum(blockRect.attr('y')) + toNum(blockRect.attr('height'));
+		const rectEndTime = moment(scale.invert(rectEndY));
+		const isEndSame = rectEndTime.isSame(block.endTime, 'minute');
+
+		if (!isStartSame) {
+			updateCompletePromise = new Promise(function(resolve, reject) {
+				blockRect.transition().duration(1000).ease(d3.easeElastic)
+					.attr('y', block => scale(block.startTime))
+					.attr('height', block => scale(block.endTime) - scale(block.startTime))
+					.on('end', resolve(blockRects));
+			});
+		}
+
+		if (!isEndSame && isStartSame) {
+			updateCompletePromise = new Promise(function(resolve, reject) {
+				blockRect.transition().duration(1000).ease(d3.easeElastic)
+					.attr('height', block => scale(block.endTime) - scale(block.startTime))
+					.on('end', resolve(blockRects));
+			});
+		}
+
+		// check if type of time block has changed (no text/calls, text/call only, both texts/calls)
+		if (!blockRect.classed(block.type)) {
+			WeeklyTimeBlock.blockTypes.forEach(type => blockRect.classed(type, false));
+			blockRect.classed(block.type, true);
+		}
+	});
+
+	if (updateCompletePromise === undefined)
+		updateCompletePromise = Promise.resolve(blockRects);
+
+	return updateCompletePromise;
+}
+
+function removeBlockRects(blockRects) {
+	let blocksRemovedPromise;
+
+	blockRects.exit().each(function(block) {
+		blocksRemovedPromise = new Promise((resolve, reject) => {
+			const blockRect = d3.select(this);
+			const origColorClass = timeBlockColorClass(block);
+			const turnRed = () => blockRect.classed(origColorClass, false).classed('no-text-or-call', true);
+			const turnBack = () => blockRect.classed('no-text-or-call', false).classed(origColorClass, true);
+			const removeBlock = () =>
+				blockRect.transition().delay(200).duration(1250)
+					.style('opacity', 0.0)
+					.on('end', resolve(blockRects))
+					.remove();
+			
+			turnRed();
+			timeout(200)
+				.then(turnBack)
+				.then(() => timeout(200))
+				.then(turnRed)
+				.then(() => timeout(200))
+				.then(turnBack)
+				.then(() => timeout(200))
+				.then(turnRed)
+				.then(removeBlock);
+			// );
+			// timeout(() => blockRect.classed('no-text-or-call', false).classed(origColorClass, true))
+			// 	.then(() => )
+			
+			// blockRect
+			// 	.transition().delay(500).selection().classed(origColorClass, false).classed('no-text-or-call', true)
+			// 	.transition().delay(500).selection().classed('no-text-or-call', false).classed(origColorClass, true)
+			// 	.transition().delay(500).selection().classed(origColorClass, false).classed('no-text-or-call', true)
+				// .transition().delay(200).duration(1250)
+				// 	.style('opacity', 0.0)
+				// 	.on('end', resolve(blockRects))
+				// 	.remove();
+		});
+	});
+
+	if (blocksRemovedPromise === undefined)
+		blocksRemovedPromise = Promise.resolve(blockRects);
+
+	return blocksRemovedPromise;
+}
+
 class Hover {
 	static showTopLine(lineY, textX, textY = lineY, lineText) {
 		const paddingV = 2.5;
@@ -587,13 +606,13 @@ class Hover {
 
 // --------------------------- Event Handlers --------------------------- \\
 
-function timeBlockClicked(timeBlock) {
+function timeBlockClicked(block) {
 	switch (mode) {
 
 		// show confirmation modal
 		case 'delete':
 			const deleteBlock = () => {
-				const newSchedule = timeBlockService.remove(timeBlock);
+				const newSchedule = timeBlockService.remove(block);
 				setWeeklyData(newSchedule);
 				setDeleteMode(false);
 				toolbar.clearButtons();
@@ -609,14 +628,77 @@ function timeBlockClicked(timeBlock) {
 		case 'copy':
 			if (d3.select('g.day-square rect.time-block.selected').empty()) {
 				d3.select(this).classed('selected', true);
-				copyMode.showDaySelectionSquares(timeBlock.dayIndex);
+				copyMode.showDaySelectionSquares(block.dayIndex);
 			}
 			break;
 
 		// show edit time block modal
 		case '':
-			timeBlockModal.show(timeBlock, 'edit', setWeeklyData);
+			timeBlockModal.show(block, 'edit', setWeeklyData);
 	}
+}
+
+function timeBlockDragged(block) {
+	if (mode !== '')
+		return;
+
+	const scale = getDayScale(block.dayIndex);
+	const schedule = timeBlockService.getActiveWeeklySchedule();
+	const newTopY = +d3.select(this).attr('y') + d3.event.dy;
+	const [topBoundaryY, bottomBoundaryY] = schedule.findGrowthBoundaries(block.blockID).map(scale);
+	const newBottomY = +d3.select(this).attr('height') + newTopY;
+
+	// move/resize rect
+	if (newTopY < topBoundaryY)
+		d3.select(this).attr('y', topBoundaryY);
+	else if (newBottomY > bottomBoundaryY)
+		d3.select(this).attr('y', bottomBoundaryY - +d3.select(this).attr('height'));
+	else
+		d3.select(this).attr('y', newTopY);
+
+	// determine positioning/values for top/bottom lines/texts
+	const paddingV = 2.5;
+	const paddingH = 5;
+	const topTime = scale.invert(newTopY);
+	const [topHours12, topMeridiem] = to12Hours(topTime.getHours());
+	const bottomTime =scale.invert(newBottomY);
+	const [bottomHours12, bottomMeridiem] = to12Hours(bottomTime.getHours());
+	const x = d3.mouse(d3.select('.tracking-empty').node())[0];
+	const topLineText = `${zPad(topHours12)}:${zPad(topTime.getMinutes())} ${topMeridiem}`;
+	const bottomLineText = `${zPad(bottomHours12)}:${zPad(bottomTime.getMinutes())} ${bottomMeridiem}`;
+
+	// adjust top and bottom tracking lines/texts
+	Hover.showTopLine(newTopY, x, newTopY - 10, topLineText);
+	Hover.showBottomLine(newBottomY, x, newBottomY + 21, bottomLineText);
+}
+
+function timeBlockDragEnded(block) {
+	if (mode !== '')
+		return;
+
+	const scale = getDayScale(block.dayIndex);
+	const newTopY = +d3.select(this).attr('y') + d3.event.dy;
+	const newBottomY = +d3.select(this).attr('height') + newTopY;
+	const newStartTime = scale.invert(newTopY);
+	const newEndTime = scale.invert(newBottomY);
+
+	let tempModifiedTimeBlock = new WeeklyTimeBlock(block);
+	tempModifiedTimeBlock.startHour = newStartTime.getHours();
+	tempModifiedTimeBlock.startMinute = newStartTime.getMinutes();
+	tempModifiedTimeBlock.endHour = newEndTime.getHours();
+	tempModifiedTimeBlock.endMinute = newEndTime.getMinutes();
+
+	Hover.hideLines();
+
+	const editCanceled = () => d3.select(this)
+		.transition()
+		.duration(1000)
+		.delay(250)
+		.ease(d3.easeExp)
+		.attr('y', block => scale(block.startTime));
+	setTimeout(() =>
+		timeBlockModal.show(tempModifiedTimeBlock, 'edit', setWeeklyData, editCanceled, 0)
+	);
 }
 
 /** Enables 'creating' mode and Creates a new 30-min time block rect at the location clicked. */

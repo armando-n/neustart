@@ -118,6 +118,15 @@ class WeeklyContactProfile extends ModelObject implements JsonSerializable {
 		return $object;
 	}
 
+	public function copyTimeBlock($timeBlock, $dayIndexesAndOverwrites) {
+		$createdBlocks = array();
+		$updatedBlocks = array();
+		$deletedBlocks = array();
+
+		// copy time block to each day of the week matching the given day indexes
+		echo $dayIndexesAndOverwrites;
+	}
+
 }
 
 ?>

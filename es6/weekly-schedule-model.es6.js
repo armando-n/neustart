@@ -26,6 +26,7 @@ export class WeeklySchedule {
 				daysWithTimeBlocks = rawTimeBlocks;
 			}
 
+			// rawTimeBlocks actually is an array of raw time blocks
 			else {
 				rawTimeBlocks = rawTimeBlocks.map(validateBlock);
 
@@ -33,7 +34,6 @@ export class WeeklySchedule {
 				daysWithTimeBlocks = d3.nest()
 					.key(rawBlock => rawBlock.dayOfWeek)
 					.entries(rawTimeBlocks);
-				daysWithTimeBlocks.forEach((day, index) => day.index = index);
 			}
 
 		}
@@ -43,17 +43,21 @@ export class WeeklySchedule {
 		}
 
 		// fill in any missing day objects
-		const days = WeeklySchedule.days;
-		const allDays = [];
-		for (let dayIndex = 0, dataIndex = 0; dayIndex < days.length; dayIndex++, dataIndex++) {
-			if (daysWithTimeBlocks[dataIndex] && daysWithTimeBlocks[dataIndex].key === days[dayIndex]) {
-				allDays.push(daysWithTimeBlocks[dataIndex]);
-			}
-			else {
-				allDays.push({ key: days[dayIndex], values: [] });
-				dataIndex--;
-			}
-		}
+		// const days = WeeklySchedule.days;
+		const allDays = WeeklySchedule.days.map((dayOfWeek, dayIndex) =>
+			(daysWithTimeBlocks[0].key === dayOfWeek)
+			? Object.assign(daysWithTimeBlocks.shift(), { index: dayIndex })
+			: { key: dayOfWeek, values: [], index: dayIndex }
+		)
+		// for (let dayIndex = 0, dataIndex = 0; dayIndex < days.length; dayIndex++, dataIndex++) {
+		// 	if (daysWithTimeBlocks[dataIndex] && daysWithTimeBlocks[dataIndex].key === days[dayIndex]) {
+		// 		allDays.push(daysWithTimeBlocks[dataIndex]);
+		// 	}
+		// 	else {
+		// 		allDays.push({ key: days[dayIndex], values: [], index: dayIndex });
+		// 		dataIndex--;
+		// 	}
+		// }
 		this.daysWithTimeBlocks = allDays;
 	}
 
