@@ -120,12 +120,21 @@ class WeeklyTimeBlock {
 		return new Date(this.endMoment.toDate().valueOf());
 	}
 
+	get midTime() {
+		return new Date(this.midMoment.toDate().valueOf());
+	}
+
 	get startMoment() {
 		return moment({hour: this.startHour, minute: this.startMinute}).day(this.dayIndex);
 	}
 
 	get endMoment() {
 		return moment({hour: this.endHour, minute: this.endMinute}).day(this.dayIndex);
+	}
+
+	get midMoment() {
+		const blockDurationMins = this.endMoment.diff(this.startMoment, 'minutes');
+		return this.startMoment.add(blockDurationMins / 2, 'minutes');
 	}
 
 	set startMoment(startMoment) {

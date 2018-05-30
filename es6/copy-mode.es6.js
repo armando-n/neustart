@@ -77,7 +77,7 @@ export function completeCopyMode() {
 			timeBlockService.mergeIdenticalAdjacentBlocks(schedule, daysToCopyTo.map(day => day.index))
 				.then(() => svgService.setWeeklyData());
 		})
-		// .catch(error => console.log(error));
+		.catch(error => console.log(error));
 
 	// reset toolbar and mode
 	toolbar.removeCopyModeButtons();

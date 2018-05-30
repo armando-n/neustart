@@ -42,22 +42,13 @@ export class WeeklySchedule {
 			throw new Error('Invalid argument in WeeklySchedule constructor');
 		}
 
-		// fill in any missing day objects
-		// const days = WeeklySchedule.days;
+		// fill in any missing day objects and add index property to each day
 		const allDays = WeeklySchedule.days.map((dayOfWeek, dayIndex) =>
 			(daysWithTimeBlocks[0].key === dayOfWeek)
 			? Object.assign(daysWithTimeBlocks.shift(), { index: dayIndex })
 			: { key: dayOfWeek, values: [], index: dayIndex }
 		)
-		// for (let dayIndex = 0, dataIndex = 0; dayIndex < days.length; dayIndex++, dataIndex++) {
-		// 	if (daysWithTimeBlocks[dataIndex] && daysWithTimeBlocks[dataIndex].key === days[dayIndex]) {
-		// 		allDays.push(daysWithTimeBlocks[dataIndex]);
-		// 	}
-		// 	else {
-		// 		allDays.push({ key: days[dayIndex], values: [], index: dayIndex });
-		// 		dataIndex--;
-		// 	}
-		// }
+
 		this.daysWithTimeBlocks = allDays;
 	}
 

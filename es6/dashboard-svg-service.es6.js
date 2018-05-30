@@ -9,6 +9,9 @@ import WeeklyTimeBlock from './weekly-timeblock-model.es6.js';
 import * as copyMode from './copy-mode.es6.js';
 
 let mode = '';
+let removeRunCount = 0;
+let updateRunCount = 0;
+let createRunCount = 0;
 
 export function getMode() {
 	return mode;
@@ -281,7 +284,7 @@ export function setWeeklyData(weeklySchedule = timeBlockService.getActiveWeeklyS
 			.attr('transform', `translate(0, ${dimensions.marginTop})`);
 
 	// draw time blocks for each day
-	d3.selectAll('g.day-square').data(weeklySchedule.daysWithTimeBlocks, day => day.index);
+	d3.selectAll('g.day').selectAll('g.day-square').data(weeklySchedule.daysWithTimeBlocks, day => day.index);
 	d3.selectAll('g.day').selectAll('g.day-square').each(function(day) {
 
 		// y-scale for the current day
@@ -293,24 +296,22 @@ export function setWeeklyData(weeklySchedule = timeBlockService.getActiveWeeklyS
 
 		// store scale in day square datum for easy access/use
 		day.scale = yScale;
-		// d3.select(this).each(day => day.scale = yScale);
 
-		// bind time block data to rects
-		const blockRects = d3.select(this) // this is the <g> day-square element
-			.selectAll('rect.time-block')
-			.data(day => day.values, block => block.blockID); // values are time blocks
-
-		// blockRects.each(updateExistingBlockRects);
-
-		// ceate/update/delete time block rects
-		removeBlockRects(blockRects)
-			.then(updateExistingBlockRects)
-			.then(createBlockRects)
-			// .catch(error=> {
-			// 	console.log('error in time block rect crud promise');
-			// 	console.log(error);
-			// });
 	});
+
+	// bind time block data to time block rects
+	const blockRects = d3.selectAll('g.day-square') // this is the <g> day-square element
+		.selectAll('rect.time-block')
+		.data(day => day.values, block => block.blockID); // values are time blocks
+
+	// ceate/update/delete time block rects
+	removeBlockRects(blockRects)
+		.then(updateExistingBlockRects)
+		.then(createBlockRects)
+		.catch(error=> {
+			console.log('error in time block rect crud promise');
+			console.log(error);
+		});
 }
 
 /** Determine the coordinates, x-scale day value, and y-scale time-value of the location to snap to */
@@ -423,22 +424,41 @@ function timeBlockColorClass(timeBlock) {
 
 /** create needed new block rects */
 function createBlockRects(blockRects) {
-	blockRects.enter().append('rect')
+console.log(`createRunCount: ${++createRunCount}`);
+	// create block rect with an initial height of 0
+	const newBlockRects = blockRects.enter().append('rect')
 		.attr('class', block => 'time-block ' + timeBlockColorClass(block))
 		.attr('x', 0)
 		.attr('y', block => {
 			const scale = getDayScale(block.dayIndex);
-			return scale(block.startTime);
+			console.log('----------------');
+			console.log('startTime');
+			console.log(block.startTime);
+			console.log('midTime');
+			console.log(block.midTime);
+			console.log('endTime');
+			console.log(block.endTime);
+			return scale(block.midTime);
 		})
 		.attr('rx', 8)
 		.attr('ry', 8)
 		.attr('width', getDimensions().dayWidth)
+		.attr('height', 0)
+		.each(function(block) { block.rect = this });
+
+	// grow block rect to its actual size
+	newBlockRects.transition().duration(1000).ease(d3.easeBounce)
+		.attr('y', block => {
+			const scale = getDayScale(block.dayIndex);
+			return scale(block.startTime);
+		})
 		.attr('height', block => {
 			const scale = getDayScale(block.dayIndex);
 			return scale(block.endTime) - scale(block.startTime);
-		})
-		.each(function(block) { block.rect = this })
-		.on('click', timeBlockClicked)
+		});
+
+	// assign event handlers
+	newBlockRects.on('click', timeBlockClicked)
 		.call(
 			d3.drag()
 				.on('drag', timeBlockDragged)
@@ -448,7 +468,7 @@ function createBlockRects(blockRects) {
 
 function updateExistingBlockRects(blockRects) {
 	let updateCompletePromise;
-
+console.log(`updateRunCount: ${++updateRunCount}`);
 	blockRects.each(function(block) {
 		if (!(block instanceof WeeklyTimeBlock))
 			throw new Error('bleh');
@@ -470,18 +490,18 @@ function updateExistingBlockRects(blockRects) {
 
 		if (!isStartSame) {
 			updateCompletePromise = new Promise(function(resolve, reject) {
-				blockRect.transition().duration(1000).ease(d3.easeElastic)
+				blockRect.transition().duration(1000).ease(d3.easeBounce)
 					.attr('y', block => scale(block.startTime))
 					.attr('height', block => scale(block.endTime) - scale(block.startTime))
-					.on('end', resolve(blockRects));
+					.on('end', () => resolve(blockRects));
 			});
 		}
 
 		if (!isEndSame && isStartSame) {
 			updateCompletePromise = new Promise(function(resolve, reject) {
-				blockRect.transition().duration(1000).ease(d3.easeElastic)
+				blockRect.transition().duration(1000).ease(d3.easeBounce)
 					.attr('height', block => scale(block.endTime) - scale(block.startTime))
-					.on('end', resolve(blockRects));
+					.on('end', () => resolve(blockRects));
 			});
 		}
 
@@ -500,7 +520,7 @@ function updateExistingBlockRects(blockRects) {
 
 function removeBlockRects(blockRects) {
 	let blocksRemovedPromise;
-
+console.log(`removeRunCount: ${++removeRunCount}`);
 	blockRects.exit().each(function(block) {
 		blocksRemovedPromise = new Promise((resolve, reject) => {
 			const blockRect = d3.select(this);
@@ -510,7 +530,7 @@ function removeBlockRects(blockRects) {
 			const removeBlock = () =>
 				blockRect.transition().delay(200).duration(1250)
 					.style('opacity', 0.0)
-					.on('end', resolve(blockRects))
+					.on('end', () => resolve(blockRects))
 					.remove();
 			
 			turnRed();
