@@ -209,15 +209,13 @@ export class WeeklySchedule {
 				}
 			}
 
-			addCopyBlock = addCopyBlock && !copyBlock.startMoment.isSame(copyBlock.endMoment, 'minute');
-
-			if (addCopyBlock) {
+			// sometimes the origin copy block rect itself doesn't need to be added
+			if (addCopyBlock && !copyBlock.startMoment.isSame(copyBlock.endMoment, 'minute'))
 				createdBlocks.push(copyBlock);
-				createdBlocks.forEach(block => this.daysWithTimeBlocks[dayIndex].values.push(block));
-				this.daysWithTimeBlocks[dayIndex].values.sort(comparator);
-			} else {
-				createdBlocks.length = 0;
-			}
+
+			// add any block rects we've decided to add while keeping the data sorted
+			createdBlocks.forEach(block => this.daysWithTimeBlocks[dayIndex].values.push(block));
+			this.daysWithTimeBlocks[dayIndex].values.sort(comparator);
 
 			// const mergeResults = mergeIdentAdjacentBlocks([dayIndex]);
 			// const mergeResults = mergeIdenticalAdjacentBlocks.call(this, [dayIndex]); // TODO how should this affect the returned crud arrays?

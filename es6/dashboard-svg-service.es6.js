@@ -9,9 +9,6 @@ import WeeklyTimeBlock from './weekly-timeblock-model.es6.js';
 import * as copyMode from './copy-mode.es6.js';
 
 let mode = '';
-let removeRunCount = 0;
-let updateRunCount = 0;
-let createRunCount = 0;
 
 export function getMode() {
 	return mode;
@@ -134,7 +131,8 @@ export function createSvg(weeklySchedule) {
 		.attr('x', dimensions.dayWidth / 2)
 		.attr('y', 20)
 		.attr('text-anchor', 'middle')
-		.text(day => day.key);
+		.text(day => day.key)
+		.lower();
 
 	// create border for each day square
 	canvas.selectAll('g.day-square').append('rect')
@@ -267,11 +265,9 @@ function cancelBlockCreation() {
 
 /** Binds the weekly data, overriding previous data, then redraws the SVG elements. */
 export function setWeeklyData(weeklySchedule = timeBlockService.getActiveWeeklySchedule()) {
-	if (!(weeklySchedule instanceof WeeklySchedule))
-		throw new Error('Invalid argument in SvgService.createSvg');
+	const dimensions = getDimensions();
 
 	// bind day data and create a svg groups for each day column and day square
-	const dimensions = getDimensions();
 	d3.select('.canvas')
 			.selectAll('g.day')
 			.data(weeklySchedule.daysWithTimeBlocks, day => day.index)
@@ -281,22 +277,17 @@ export function setWeeklyData(weeklySchedule = timeBlockService.getActiveWeeklyS
 			.attr('transform', (day) => `translate(${day.index*dimensions.dayWidth}, 0)`)
 		.append('g')
 			.attr('class', 'day-square')
-			.attr('transform', `translate(0, ${dimensions.marginTop})`);
-
-	// draw time blocks for each day
+			.attr('transform', `translate(0, ${dimensions.marginTop})`)
 	d3.selectAll('g.day').selectAll('g.day-square').data(weeklySchedule.daysWithTimeBlocks, day => day.index);
-	d3.selectAll('g.day').selectAll('g.day-square').each(function(day) {
 
-		// y-scale for the current day
+	// create and store a scale for each day into each day's datum
+	d3.selectAll('g.day').selectAll('g.day-square').each(day => {
 		const domainStart = moment().day(day.index).startOf('day').toDate();
 		const domainEnd = moment().day(day.index).endOf('day').toDate();
 		const yScale = d3.scaleTime()
 			.domain([domainStart, domainEnd])
 			.range([0, dimensions.dayHeight]);
-
-		// store scale in day square datum for easy access/use
 		day.scale = yScale;
-
 	});
 
 	// bind time block data to time block rects
@@ -305,13 +296,15 @@ export function setWeeklyData(weeklySchedule = timeBlockService.getActiveWeeklyS
 		.data(day => day.values, block => block.blockID); // values are time blocks
 
 	// ceate/update/delete time block rects
-	removeBlockRects(blockRects)
+	const animationsCompletePromise = removeBlockRects(blockRects)
 		.then(updateExistingBlockRects)
 		.then(createBlockRects)
 		.catch(error=> {
 			console.log('error in time block rect crud promise');
 			console.log(error);
 		});
+
+	return animationsCompletePromise;
 }
 
 /** Determine the coordinates, x-scale day value, and y-scale time-value of the location to snap to */
@@ -424,20 +417,14 @@ function timeBlockColorClass(timeBlock) {
 
 /** create needed new block rects */
 function createBlockRects(blockRects) {
-console.log(`createRunCount: ${++createRunCount}`);
+	let createCompletePromise;
+
 	// create block rect with an initial height of 0
 	const newBlockRects = blockRects.enter().append('rect')
 		.attr('class', block => 'time-block ' + timeBlockColorClass(block))
 		.attr('x', 0)
 		.attr('y', block => {
 			const scale = getDayScale(block.dayIndex);
-			console.log('----------------');
-			console.log('startTime');
-			console.log(block.startTime);
-			console.log('midTime');
-			console.log(block.midTime);
-			console.log('endTime');
-			console.log(block.endTime);
 			return scale(block.midTime);
 		})
 		.attr('rx', 8)
@@ -447,62 +434,51 @@ console.log(`createRunCount: ${++createRunCount}`);
 		.each(function(block) { block.rect = this });
 
 	// grow block rect to its actual size
-	newBlockRects.transition().duration(1000).ease(d3.easeBounce)
-		.attr('y', block => {
-			const scale = getDayScale(block.dayIndex);
-			return scale(block.startTime);
-		})
-		.attr('height', block => {
-			const scale = getDayScale(block.dayIndex);
-			return scale(block.endTime) - scale(block.startTime);
-		});
+	createCompletePromise = new Promise(resolve =>
+		newBlockRects.transition().duration(550).ease(d3.easeBounce)
+			.attr('y', block => getDayScale(block.dayIndex)(block.startTime))
+			.attr('height', block => {
+				const scale = getDayScale(block.dayIndex);
+				return scale(block.endTime) - scale(block.startTime);
+			})
+			.on('end', () => resolve(blockRects))
+	);
 
 	// assign event handlers
-	newBlockRects.on('click', timeBlockClicked)
-		.call(
-			d3.drag()
-				.on('drag', timeBlockDragged)
-				.on('end', timeBlockDragEnded)
+	newBlockRects
+		.on('click', timeBlockClicked)
+		.call(d3.drag()
+			.on('drag', timeBlockDragged)
+			.on('end', timeBlockDragEnded)
 		);
+
+	if (createCompletePromise === undefined)
+		createCompletePromise = Promise.resolve(blockRects);
+
+	return createCompletePromise;
 }
 
 function updateExistingBlockRects(blockRects) {
 	let updateCompletePromise;
-console.log(`updateRunCount: ${++updateRunCount}`);
-	blockRects.each(function(block) {
-		if (!(block instanceof WeeklyTimeBlock))
-			throw new Error('bleh');
 
+	blockRects.each(function(block) {
 		const scale = getDayScale(block.dayIndex);
 		const blockRect = d3.select(this);
-		block.rect = this
+		block.rect = this; // sometimes you need to be told twice
 
-		// determine if start time was changed
-		const rectY = blockRect.attr('y');
-		const rectStartDate = scale.invert(rectY);
-		const rectStartTime = moment(rectStartDate);
-		const isStartSame = rectStartTime.isSame(block.startTime, 'minute');
+		// determine if start or end time was changed
+		const {startMoment, endMoment} = getRectBoundaryMoments(blockRect);
+		const isStartSame = startMoment.isSame(block.startMoment, 'minute');
+		const isEndSame = endMoment.isSame(block.endMoment, 'minute');
 
-		// determine if end time was changed
-		const rectEndY = toNum(blockRect.attr('y')) + toNum(blockRect.attr('height'));
-		const rectEndTime = moment(scale.invert(rectEndY));
-		const isEndSame = rectEndTime.isSame(block.endTime, 'minute');
-
-		if (!isStartSame) {
-			updateCompletePromise = new Promise(function(resolve, reject) {
-				blockRect.transition().duration(1000).ease(d3.easeBounce)
+		// grow or shrink time block rect if it has been changed
+		if (!isStartSame || !isEndSame) {
+			updateCompletePromise = new Promise(resolve =>
+				blockRect.transition().duration(650).ease(d3.easeSin)
 					.attr('y', block => scale(block.startTime))
 					.attr('height', block => scale(block.endTime) - scale(block.startTime))
-					.on('end', () => resolve(blockRects));
-			});
-		}
-
-		if (!isEndSame && isStartSame) {
-			updateCompletePromise = new Promise(function(resolve, reject) {
-				blockRect.transition().duration(1000).ease(d3.easeBounce)
-					.attr('height', block => scale(block.endTime) - scale(block.startTime))
-					.on('end', () => resolve(blockRects));
-			});
+					.on('end', () => resolve(blockRects))
+			);
 		}
 
 		// check if type of time block has changed (no text/calls, text/call only, both texts/calls)
@@ -520,41 +496,23 @@ console.log(`updateRunCount: ${++updateRunCount}`);
 
 function removeBlockRects(blockRects) {
 	let blocksRemovedPromise;
-console.log(`removeRunCount: ${++removeRunCount}`);
+
 	blockRects.exit().each(function(block) {
 		blocksRemovedPromise = new Promise((resolve, reject) => {
 			const blockRect = d3.select(this);
 			const origColorClass = timeBlockColorClass(block);
 			const turnRed = () => blockRect.classed(origColorClass, false).classed('no-text-or-call', true);
 			const turnBack = () => blockRect.classed('no-text-or-call', false).classed(origColorClass, true);
-			const removeBlock = () =>
-				blockRect.transition().delay(200).duration(1250)
-					.style('opacity', 0.0)
-					.on('end', () => resolve(blockRects))
-					.remove();
+			const flashOnce = () => timeout(80).then(turnBack).then(() => timeout(80)).then(turnRed);
+			const removeBlock = () => blockRect.transition().duration(750)
+				.style('opacity', 0.0)
+				.on('end', () => resolve(blockRects))
+				.remove();
 			
-			turnRed();
-			timeout(200)
-				.then(turnBack)
-				.then(() => timeout(200))
-				.then(turnRed)
-				.then(() => timeout(200))
-				.then(turnBack)
-				.then(() => timeout(200))
-				.then(turnRed)
+			timeout(0).then(turnRed)
+				.then(flashOnce)
+				.then(flashOnce)
 				.then(removeBlock);
-			// );
-			// timeout(() => blockRect.classed('no-text-or-call', false).classed(origColorClass, true))
-			// 	.then(() => )
-			
-			// blockRect
-			// 	.transition().delay(500).selection().classed(origColorClass, false).classed('no-text-or-call', true)
-			// 	.transition().delay(500).selection().classed('no-text-or-call', false).classed(origColorClass, true)
-			// 	.transition().delay(500).selection().classed(origColorClass, false).classed('no-text-or-call', true)
-				// .transition().delay(200).duration(1250)
-				// 	.style('opacity', 0.0)
-				// 	.on('end', resolve(blockRects))
-				// 	.remove();
 		});
 	});
 
@@ -562,6 +520,22 @@ console.log(`removeRunCount: ${++removeRunCount}`);
 		blocksRemovedPromise = Promise.resolve(blockRects);
 
 	return blocksRemovedPromise;
+}
+
+/** Given a D3 selection of a rect positioned within a day square, its start and
+ * end times are determined and returned as moment properties of an object. */
+export function getRectBoundaryMoments(blockRect) {
+	const scale = getDayScale(blockRect.datum().dayIndex);
+
+	// determine start time
+	const rectStartY = blockRect.attr('y');
+	const startMoment = moment(scale.invert(rectStartY));
+
+	// determine end time
+	const rectEndY = toNum(blockRect.attr('y')) + toNum(blockRect.attr('height'));
+	const endMoment = moment(scale.invert(rectEndY));
+
+	return { startMoment, endMoment };
 }
 
 class Hover {

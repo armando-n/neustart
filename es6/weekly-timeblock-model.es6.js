@@ -91,11 +91,11 @@ class WeeklyTimeBlock {
 			this.isTextRepeating === otherWeeklyTimeBlock.isTextRepeating &&
 			this.isCallRepeating === otherWeeklyTimeBlock.isCallRepeating
 		) {
-			const test1 = this.isTextRepeating && this.repeatTextDuration !== otherWeeklyTimeBlock.repeatTextDuration;
-			const test2 = this.isCallRepeating && this.repeatCallDuration !== otherWeeklyTimeBlock.repeatCallDuration;
-			if (test1)
+			const isTextRepeatDurationOkay = !this.isTextRepeating || this.repeatTextDuration === otherWeeklyTimeBlock.repeatTextDuration;
+			const isCallRepeatDurationOkay = !this.isCallRepeating || this.repeatCallDuration === otherWeeklyTimeBlock.repeatCallDuration;
+			if (!isTextRepeatDurationOkay)
 				return false;
-			if (test2)
+			if (!isCallRepeatDurationOkay)
 				return false;
 
 			return true;

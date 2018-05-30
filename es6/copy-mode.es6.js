@@ -72,10 +72,10 @@ export function completeCopyMode() {
 	timeBlockService.copy(blockToCopy, daysToCopyTo)
 		// .then(() => svgService.setWeeklyData())
 		.then(schedule => {
-			svgService.setWeeklyData();
-
-			timeBlockService.mergeIdenticalAdjacentBlocks(schedule, daysToCopyTo.map(day => day.index))
-				.then(() => svgService.setWeeklyData());
+			svgService.setWeeklyData().then(() => {
+				timeBlockService.mergeIdenticalAdjacentBlocks(schedule, daysToCopyTo.map(day => day.index))
+					.then(() => svgService.setWeeklyData());
+			})
 		})
 		.catch(error => console.log(error));
 
@@ -150,8 +150,8 @@ function uncheckOverwriteBox(copyRect, checkbox, checkmark, tooltipG) {
 	// move overlapping time blocks into the foreground
 	d3.select(copyRect)
 		.transition().duration(200).ease(d3.easeLinear)
-		.style('opacity', 0.0)
-		.on('end', () =>d3.select(this).lower());
+		// .style('opacity', 0.0)
+		.on('end', function() { d3.select(this).lower(); });
 	// bringBlockRectsToFront(getConflictingBlocks(copyRect));
 
 	// tooltipG.raise();
@@ -187,15 +187,9 @@ function animateStroke(day) {
 /** Determines which time blocks in the active schedule conflict with
  * the time block represented by the rect svg argument, if any. */
 function getConflictingBlocks(timeBlockRect) {
-	const daySquare = d3.select(timeBlockRect.parentNode);
-	const scale = daySquare.datum().scale;
 	const schedule = timeBlockService.getActiveWeeklySchedule();
-	const rectY = +d3.select(timeBlockRect).attr('y');
-	const rectHeight = +d3.select(timeBlockRect).attr('height');
-	const rectStartTime = scale.invert(rectY);
-	const rectEndTime = scale.invert(rectY + rectHeight);
-
-	return schedule.getConflictingBlocks(rectStartTime, rectEndTime);
+	const {startMoment, endMoment} = svgService.getRectBoundaryMoments(timeBlockRect);
+	return schedule.getConflictingBlocks(startMoment, endMoment);
 }
 
 // --------------------------- Event Handlers --------------------------- \\
@@ -216,7 +210,7 @@ function daySelectSquareClicked(day) {
 		const targetDayIndex = day.index;
 		const daysAway = sourceDayIndex - targetDayIndex;
 		const copyRect = rectToCopy.node().cloneNode(true);
-		d3.select(copyRect).datum({ index: targetDayIndex, scale: svgService.getDayScale(targetDayIndex) });
+		d3.select(copyRect).datum({ dayIndex: targetDayIndex });
 		d3.select(copyRect)
 			.classed('selected', false)
 			.classed('copy', true)
@@ -285,9 +279,8 @@ function showOverwriteCheckbox() {
 	if (svgService.getMode() !== 'copy')
 		return;
 
-	d3.select(this).raise();
-
-	const conflictBlocks = getConflictingBlocks(this);
+	const copyRect = d3.select(this).raise();
+	const conflictBlocks = getConflictingBlocks(copyRect);
 	if (conflictBlocks.length === 0)
 		return;
 
