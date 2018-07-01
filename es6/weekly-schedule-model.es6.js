@@ -12,7 +12,15 @@ export class WeeklySchedule {
 
 		// allow WeeklySchedule object as argument
 		if (rawTimeBlocks instanceof WeeklySchedule) {
-			daysWithTimeBlocks = rawTimeBlocks.daysWithTimeBlocks;
+			const scheduleToCopy = rawTimeBlocks;
+			daysWithTimeBlocks = scheduleToCopy.daysWithTimeBlocks
+				.map(day => ({
+					index: day.index,
+					key: day.key,
+					scale: day.scale,
+					values: day.values.map(block => new WeeklyTimeBlock(block))
+				})
+			);
 		}
 
 		// argument should be an array of either raw time block records or nested records grouped by day
@@ -86,13 +94,15 @@ export class WeeklySchedule {
 		return this.daysWithTimeBlocks[dayIndex].values[blockIndex];
 	}
 
-	/** Copies the given time block to each day indicated by the dayIndexesAndOverwrites argument,
+	/** Creates and returns a new WeeklyScheduleModel object, to which it
+	 * copies the given time block to each day indicated by the dayIndexesAndOverwrites argument,
 	 * which is an array of objects. Each object indicates a day index to copy the block to w/the
 	 * 'index' property.  The objects also indcate whether or not to overwrite any existing time
 	 * blocks for that day where there is overlap using the 'overwrite' property. An object is
 	 * returned w/three array properties named 'createdBlocks', 'updatedBlocks', and 'deletedBlocks'.
 	 * Each array contains blocks that were created, updated, and deleted during the copying process. */
 	copyBlock(timeBlock, dayIndexesAndOverwrites) {
+		const newSchedule = new WeeklySchedule(this);
 		const createdBlocks = [];
 		const updatedBlocks = [];
 		const deletedBlocks = [];
@@ -102,7 +112,7 @@ export class WeeklySchedule {
 			let addCopyBlock = true;
 			const dayIndex = dayIndexAndOverwrite.index;
 			const overwrite = dayIndexAndOverwrite.overwrite;
-			const day = this.daysWithTimeBlocks[dayIndex];
+			const day = newSchedule.daysWithTimeBlocks[dayIndex];
 			const copyBlock = timeBlock.copy(dayIndex);
 
 			// adjust time blocks and copy block for the day as needed
@@ -122,7 +132,7 @@ export class WeeklySchedule {
 				) {
 					if (overwrite) {
 						// delete current block
-						deletedBlocks.push(this.daysWithTimeBlocks[dayIndex].values.splice(blockIndex, 1).shift());
+						deletedBlocks.push(newSchedule.daysWithTimeBlocks[dayIndex].values.splice(blockIndex, 1).shift());
 					} else {
 						// create a new block from current block end time to copy block end time (or don't, if they're the same)
 						if (!currentBlock.endMoment.isSame(copyBlock.endMoment, 'minute')) {
@@ -153,7 +163,7 @@ export class WeeklySchedule {
 							currentBlock.startMoment = copyBlock.endMoment;
 							updatedBlocks.push(currentBlock);
 						} else {
-							deletedBlocks.push(this.daysWithTimeBlocks[dayIndex].values.splice(blockIndex, 1).shift());
+							deletedBlocks.push(newSchedule.daysWithTimeBlocks[dayIndex].values.splice(blockIndex, 1).shift());
 						}
 					} else {
 						// move copy block end time to current block start time
@@ -214,8 +224,8 @@ export class WeeklySchedule {
 				createdBlocks.push(copyBlock);
 
 			// add any block rects we've decided to add while keeping the data sorted
-			createdBlocks.forEach(block => this.daysWithTimeBlocks[dayIndex].values.push(block));
-			this.daysWithTimeBlocks[dayIndex].values.sort(comparator);
+			createdBlocks.forEach(block => newSchedule.daysWithTimeBlocks[dayIndex].values.push(block));
+			newSchedule.daysWithTimeBlocks[dayIndex].values.sort(comparator);
 
 			// const mergeResults = mergeIdentAdjacentBlocks([dayIndex]);
 			// const mergeResults = mergeIdenticalAdjacentBlocks.call(this, [dayIndex]); // TODO how should this affect the returned crud arrays?
@@ -223,7 +233,7 @@ export class WeeklySchedule {
 			// deletedBlocks.push(...mergeResults.deletedBlocks);
 		});
 
-		return { createdBlocks, updatedBlocks, deletedBlocks };
+		return { schedule: newSchedule, createdBlocks, updatedBlocks, deletedBlocks };
 	}
 
 	mergeIdentAdjacentBlocks(dayIndexes) {

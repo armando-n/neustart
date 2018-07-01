@@ -299,6 +299,7 @@ export function setWeeklyData(weeklySchedule = timeBlockService.getActiveWeeklyS
 	const animationsCompletePromise = removeBlockRects(blockRects)
 		.then(updateExistingBlockRects)
 		.then(createBlockRects)
+		.then(() => weeklySchedule)
 		.catch(error=> {
 			console.log('error in time block rect crud promise');
 			console.log(error);

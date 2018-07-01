@@ -4,6 +4,7 @@ import WeeklySchedule from './weekly-schedule-model.es6.js';
 import WeeklyTimeBlock from './weekly-timeblock-model.es6.js';
 
 let activeWeeklySchedule;
+const scheduleHistory = [];
 
 export function getActiveWeeklySchedule() {
 	if (!(activeWeeklySchedule instanceof WeeklySchedule))
@@ -16,6 +17,7 @@ export function setActiveWeeklySchedule(weeklySchedule) {
 		throw new Error('Invalid argument passed to TimeBlockService.setActiveWeeklySchedule');
 
 	activeWeeklySchedule = weeklySchedule;
+	scheduleHistory.push(weeklySchedule);
 
 	return activeWeeklySchedule;
 }
@@ -82,6 +84,9 @@ export function copy(blockToCopy, daysToCopyTo) {
 }
 
 export function mergeIdenticalAdjacentBlocks(schedule, dayIndexes) {
+	if (!(schedule instanceof WeeklySchedule))
+		throw new Error('Invalid schedule passed to timeBlockService.mergeIdenticalAdjacentBlocks');
+
 	const mergeResults = schedule.mergeIdentAdjacentBlocks(dayIndexes);
 	const operations = [];
 
@@ -98,6 +103,9 @@ export function mergeIdenticalAdjacentBlocks(schedule, dayIndexes) {
 			body: new WeeklyTimeBlock(updatedBlock)
 		})
 	);
+
+	if (operations.length === 0)
+		return Promise.resolve(schedule);
 
 	return ajaxService.post('/weeklytimeblocks', operations)
 		.then(extractSchedule)

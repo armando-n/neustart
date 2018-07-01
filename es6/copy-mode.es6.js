@@ -71,13 +71,9 @@ export function completeCopyMode() {
 
 	// perform the copy
 	timeBlockService.copy(blockToCopy, daysToCopyTo)
-		// .then(() => svgService.setWeeklyData())
-		.then(schedule => {
-			svgService.setWeeklyData().then(() => {
-				timeBlockService.mergeIdenticalAdjacentBlocks(schedule, daysToCopyTo.map(day => day.index))
-					.then(() => svgService.setWeeklyData());
-			})
-		})
+		.then(svgService.setWeeklyData)
+		.then(schedule => timeBlockService.mergeIdenticalAdjacentBlocks(schedule, daysToCopyTo.map(day => day.index)))
+		.then(svgService.setWeeklyData)
 		.catch(error => console.log(error));
 
 	// reset toolbar and mode
