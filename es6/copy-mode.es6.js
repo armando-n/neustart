@@ -34,6 +34,7 @@ export function showDaySelectionSquares(...excludeDayIndexes) {
 		const daySquare = d3.select(this);
 
 		if (excludeDayIndexes.indexOf(day.index) === -1) {
+			// create day selection square
 			daySquare.append('rect')
 				.attr('class', 'day-select')
 				.attr('x', 0)
@@ -106,7 +107,6 @@ export function setOverwriteAll(overwriteAll = true) {
 		else
 			uncheckOverwriteBox(copyRect, checkbox, checkmark, tooltipG);
 	});
-	
 }
 
 /** Checks the given svg checkbox and moves into the background any
@@ -114,8 +114,7 @@ export function setOverwriteAll(overwriteAll = true) {
 function checkOverwriteBox(copyRect, checkbox, checkmark) {
 	// check the checkbox
 	checkbox.attr('data-selected', '');
-	checkmark
-		.transition().duration(200).ease(d3.easeLinear)
+	checkmark.transition().duration(200).ease(d3.easeLinear)
 		.attr('stroke-dashoffset', 0);
 
 	// move overlapping time blocks into the background
@@ -124,6 +123,9 @@ function checkOverwriteBox(copyRect, checkbox, checkmark) {
 		.transition().duration(200).ease(d3.easeLinear)
 		.style('opacity', 1.0);
 	d3.select(copyRect.parentNode).select('rect.day-select').raise();
+	const tooltipG = d3.select(checkbox.node().parentNode.parentNode);
+	tooltipG.raise();
+
 	// const conflictBlocks = getConflictingBlocks(copyRect);
 	// conflictBlocks.forEach(block =>
 	// 	d3.select(block.rect)
@@ -143,8 +145,7 @@ function checkOverwriteBox(copyRect, checkbox, checkmark) {
 function uncheckOverwriteBox(copyRect, checkbox, checkmark, tooltipG) {
 	// uncheck the checkbox
 	checkbox.attr('data-selected', null);
-	checkmark
-		.transition().duration(200).ease(d3.easeLinear)
+	checkmark.transition().duration(200).ease(d3.easeLinear)
 		.attr('stroke-dashoffset', checkmark.node().getTotalLength());
 
 	// move overlapping time blocks into the foreground
@@ -168,20 +169,6 @@ function bringBlockRectsToFront(timeBlocks) {
 			.transition().duration(500).ease(d3.easeLinear)
 			.style('opacity', 0.65)
 	);
-}
-
-/** Animates a day selection square's border. */
-function animateStroke(day) {
-	if (day.animate) {
-		const darkColor = day.selected ? '#5f1d32' : '#57aa57';
-		const brightColor = day.selected ? '#f185a8' : '#57e057';
-		d3.select(this)         // this is a day selection square
-			.transition().duration(200).ease(d3.easeBack)
-			.attr('stroke', darkColor)
-			.transition().duration(200).ease(d3.easeBack)
-			.attr('stroke', brightColor)
-			.on('end', animateStroke);
-	}
 }
 
 /** Determines which time blocks in the active schedule conflict with
@@ -244,21 +231,40 @@ function daySelectSquareClicked(day) {
 function daySelectSquareMouseOver(day) {
 	day.animate = true;
 	const strokeColor = day.selected ? '#f185a8' : '#57e057';
+
 	d3.select(this.parentNode.parentNode).raise();
 	d3.select(this)
 		.attr('stroke', strokeColor)
 		.attr('stroke-width', 3);
-	animateStroke.call(this, day);
+
+	// repeatedly animates day select square
+	const animateStroke = day => {
+		const darkColor = day.selected ? '#5f1d32' : '#57aa57';
+		const brightColor = day.selected ? '#f185a8' : '#57e057';
+
+		if (day.animate) {
+			d3.select(this)         // this is a day selection square
+				.transition().duration(200).ease(d3.easeBack)
+				.attr('stroke', darkColor)
+				.transition().duration(200).ease(d3.easeBack)
+				.attr('stroke', brightColor)
+				.on('end', animateStroke);
+		} else {
+			d3.select(this)
+				.attr('stroke', 'black')
+				.attr('stroke-width', 1);
+		}
+	}
+
+	animateStroke(day);
 }
 
 function daySelectSquareMouseOut(day) {
 	day.animate = false;
-	const strokeColor = day.selected ? '#57e057' : 'black';
-	const strokeWidth = day.selected ? 3 : 1;
 	d3.select(this).interrupt();
 	d3.select(this)
-		.attr('stroke-width', strokeWidth)
-		.attr('stroke', strokeColor);
+		.attr('stroke-width', 1)
+		.attr('stroke', 'black');
 }
 
 function overwriteCheckboxClicked() {

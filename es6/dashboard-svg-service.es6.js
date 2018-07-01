@@ -464,15 +464,11 @@ function updateExistingBlockRects(blockRects) {
 	blockRects.each(function(block) {
 		const scale = getDayScale(block.dayIndex);
 		const blockRect = d3.select(this);
+		const {startMoment, endMoment} = getRectBoundaryMoments(blockRect);
 		block.rect = this; // sometimes you need to be told twice
 
-		// determine if start or end time was changed
-		const {startMoment, endMoment} = getRectBoundaryMoments(blockRect);
-		const isStartSame = startMoment.isSame(block.startMoment, 'minute');
-		const isEndSame = endMoment.isSame(block.endMoment, 'minute');
-
 		// grow or shrink time block rect if it has been changed
-		if (!isStartSame || !isEndSame) {
+		if (!startMoment.isSame(block.startMoment, 'minute') || !endMoment.isSame(block.endMoment, 'minute')) {
 			updateCompletePromise = new Promise(resolve =>
 				blockRect.transition().duration(650).ease(d3.easeSin)
 					.attr('y', block => scale(block.startTime))
