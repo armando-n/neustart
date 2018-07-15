@@ -1,4 +1,5 @@
-$bg-color: #eeeeee;
+$bg-color: #111111;
+$fg-color: #eeeeee;
 $highlight-color: #2371ee;
 $highlight-border-color: #438bff;
 $toolbar-border-color: #0c4eb7;
@@ -33,6 +34,7 @@ $block-bright-red: #f185a8;
 
  body {
 	 background: $bg-color;
+	 color: $fg-color;
 	 margin-top: 0;
  }
 
@@ -47,6 +49,11 @@ $block-bright-red: #f185a8;
 
 	#toolbar-buttons {
 		display: inline-block;
+
+		#toolbar-cancel, #toolbar-paste, #copy-overwrite, label[for='copy-overwrite'] {
+			display: none;
+		}
+
 		button {
 			background: transparent;
 			color: $toolbar-text-color;
@@ -61,6 +68,15 @@ $block-bright-red: #f185a8;
 			}
 		}
 	}
+ }
+
+ /* Message area Styles */
+ #messages-to-user {
+	 background: $bg-color;
+	 margin-top: 0.5rem;
+	 margin-bottom: 0.5rem;
+	 text-align: center;
+	 min-height: 2rem;
  }
 
 /* SVG Styles */
@@ -79,18 +95,19 @@ $block-bright-red: #f185a8;
 			stroke: $fun-blue;
 			stroke-width: 2;
 		}
-		text {
-			@extend .noselect;
-			fill: $fun-blue;
-		}
-		rect.track-text-border {
-			fill: #1f1f1f;
-			fill-opacity: 0.85;
-			stroke: #1853ac;
-			stroke-width: 2;
-			rx: 6;
-			ry: 6;
-		}
+	}
+
+	.tooltip-text {
+		@extend .noselect;
+		fill: $fun-blue;
+	}
+	.tooltip-border {
+		fill: #1f1f1f;
+		fill-opacity: 0.85;
+		stroke: #1853ac;
+		stroke-width: 2;
+		rx: 6;
+		ry: 6;
 	}
 
 	g.axis text {
@@ -145,6 +162,7 @@ $block-bright-red: #f185a8;
 			fill: url(#radial-gradiant-text-and-call);
 			&.delete-mode:hover { fill: $block-bright-red }
 			&.no-hover { cursor: default }
+			&.selected { fill: $block-bright-green }
 		}
 		&.text-and-call:hover:not(.no-hover) { fill: $block-bright-green }
 
@@ -153,6 +171,7 @@ $block-bright-red: #f185a8;
 			fill: url(#radial-gradiant-text-only);
 			&.delete-mode:hover { fill: $block-bright-red }
 			&.no-hover { cursor: default }
+			&.selected { fill: $block-bright-blue }
 		}
 		&.text-only:hover:not(.no-hover) { fill: $block-bright-blue }
 
@@ -161,6 +180,7 @@ $block-bright-red: #f185a8;
 			fill: url(#radial-gradiant-call-only);
 			&.delete-mode:hover { fill: $block-bright-red }
 			&.no-hover { cursor: default }
+			&.selected { fill: $block-bright-yellow }
 		}
 		&.call-only:hover:not(.no-hover) { fill: $block-bright-yellow }
 
@@ -169,6 +189,7 @@ $block-bright-red: #f185a8;
 			fill: #ba5776;
 			cursor: default;
 			&.no-hover { cursor: default }
+			&.selected { fill: $block-bright-red }
 		}
 		&.no-text-or-call:hover:not(.no-hover) { fill: $block-bright-red }
 	}

@@ -2,8 +2,10 @@
 class WeeklyScheduleView {
 
 	/** Returns a JSON response containing all active weekly
-	 * time blocks for the active profile of the current user. */
-	public static function show() {
+	 * time blocks for the active profile of the current user.
+	 * If $echoOutput is given and false, the array of active
+	 * weekly time blocks is returned directly instead. */
+	public static function show($echoOutput = true) {
 		header("Content-Type: application/json; charset=UTF-8");
 
 		// make sure user exists in session data
@@ -20,8 +22,12 @@ class WeeklyScheduleView {
 			return;
 		}
 
-		// output json response
-		echo JsonResponseService::response(true, $activeWeeklyTimeBlocks, null, 'Active weekly time blocks found.');
+		// output or return json response
+		$jsonResponse = JsonResponseService::response(true, $activeWeeklyTimeBlocks, null, 'Active weekly time blocks found.');
+		if ($echoOutput)
+			echo $jsonResponse;
+		else
+			return $activeWeeklyTimeBlocks;
 	}
 
 }

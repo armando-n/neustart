@@ -1,7 +1,9 @@
 const path = require('path');
 
 module.exports = {
-	entry: './es6/dashboard.es6.js',
+	entry: {
+		main: './es6/dashboard.es6.js'
+	},
 	output: {
 		filename: 'js/dashboard.js',
 		path: path.resolve(__dirname, 'dist')

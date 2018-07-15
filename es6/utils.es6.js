@@ -30,3 +30,6 @@ export const to12Hours = (hour24) => {
 	else
 		return [numHour24 % 12, 'pm'];
 }
+
+export const timeout = (milliseconds) =>
+	new Promise(resolve => setTimeout(resolve, milliseconds))

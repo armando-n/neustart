@@ -4,10 +4,19 @@ import * as timeBlockService from './timeblock-service.es6.js';
 import * as confirmModal from './confirm-modal.es6.js';
 import * as toolbar from './toolbar.es6.js';
 import WeeklySchedule from './weekly-schedule-model.es6.js';
-import { toNum, to12Hours, zPad } from './utils.es6.js';
+import { toNum, to12Hours, zPad, timeout } from './utils.es6.js';
 import WeeklyTimeBlock from './weekly-timeblock-model.es6.js';
+import * as copyMode from './copy-mode.es6.js';
 
 let mode = '';
+
+export function getMode() {
+	return mode;
+}
+
+export function setMode(newMode) {
+	mode = newMode;
+}
 
 export function createSvg(weeklySchedule) {
 	const dimensions = getDimensions();
@@ -74,24 +83,26 @@ export function createSvg(weeklySchedule) {
 		.attr('display', 'none');
 	const trackTextBorder = mouseTrackingG.append('rect')
 		.attr('id', 'track-text-border-top')
-		.attr('class', 'track-text-border')
+		.attr('class', 'tooltip-border')
 		.attr('x', 0).attr('y', 0)
 		.attr('width', 0).attr('height', 0)
 		.attr('display', 'none');
 	const trackText = mouseTrackingG.append('text')
 		.attr('id', 'track-text-top')
+		.attr('class', 'tooltip-text')
 		.attr('x', 0)
 		.attr('y', 0)
 		.attr('text-anchor', 'middle')
 		.attr('display', 'none');
 	const trackTextBorderBottom = mouseTrackingG.append('rect')
 		.attr('id', 'track-text-border-bottom')
-		.attr('class', 'track-text-border')
+		.attr('class', 'tooltip-border')
 		.attr('x', 0).attr('y', 0)
 		.attr('width', 0).attr('height', 0)
 		.attr('display', 'none');
 	const trackTextBottom = mouseTrackingG.append('text')
 		.attr('id', 'track-text-bottom')
+		.attr('class', 'tooltip-text')
 		.attr('x', 0)
 		.attr('y', 0)
 		.attr('text-anchor', 'middle')
@@ -106,83 +117,10 @@ export function createSvg(weeklySchedule) {
 		.attr('height', dimensions.dayHeight)
 		.attr('fill-opacity', 0.0)
 		.attr('stroke-opacity', 0.0)
-		.on('mousedown', function() {
-			if (mode !== '')
-				return;
-
-			mode = 'creating';
-
-			// determine the necessary height to make the new rect 30 mins long
-			const snapTo = getSnapTo(this, scale);
-			const startTime = scale.invert(snapTo.y);
-			const thirtyMinAfterStart = moment(startTime).add(30, 'minutes');
-			const endTimeY = scale(thirtyMinAfterStart.toDate());
-			const newRectHeight = endTimeY - snapTo.y;
-			undergroundCanvas.append('rect')
-				.attr('class', 'time-block time-block-new')
-				.attr('x', dimensions.dayWidth * snapTo.day)
-				.attr('y', snapTo.y)
-				.attr('rx', 8)
-				.attr('ry', 8)
-				.attr('width', dimensions.dayWidth)
-				.attr('height', newRectHeight);
-		})
-		.on('mousemove', function() {
-
-			if (mode === 'creating') {
-
-				// determine height to snap to for new time block rect
-				const snapTo = getSnapTo(this, scale);
-				const newRect = d3.select('.time-block-new');
-				let newRectHeight;
-				if (snapTo.y - newRect.attr('y') > 1) {
-					newRectHeight = snapTo.y - newRect.attr('y');
-				} else {
-					// determine the necessary height to make the new rect 30 mins long
-					const startTime = scale.invert(newRect.attr('y'));
-					const thirtyMinAfterStart = moment(startTime).add(30, 'minutes');
-					const endTimeY = scale(thirtyMinAfterStart.toDate());
-					newRectHeight = endTimeY - newRect.attr('y');
-				}
-
-				newRect.attr('height', newRectHeight);
-				const lineY = toNum(newRect.attr('y')) + toNum(newRect.attr('height'));
-				const lineText = `${snapTo.hours12}:${zPad(snapTo.minutes)} ${snapTo.meridiem}`;
-
-				// move tracking line/text for the bottom of the new time block rect
-				Hover.showBottomLine(lineY, snapTo.x, snapTo.y + 21, lineText);
-			}
-
-			// move line/text to mouse pointer and display corresponding time-value
-			else if (mode === '') {
-				const snapTo = getSnapTo(this, scale);
-				const lineText = `${snapTo.hours12}:${zPad(snapTo.minutes)} ${snapTo.meridiem}`;
-				Hover.showTopLine(snapTo.y, snapTo.x, snapTo.y - 10, lineText);
-			}
-		})
-		.on('mouseup', function() {
-			if (mode === 'creating') {
-				// remove tracking lines and texts
-				Hover.hideBotomLine();
-
-				// create basic new time block from new rect data
-				const newTimeBlock = createBlockFromNewRect(this, scale);
-
-				// show add time block modal
-				showAddBlockModal(newTimeBlock);
-			}
-			mode = '';
-		})
-		.on('mouseout', function() {
-			if (mode === 'creating') {
-				mode = '';
-				const newTimeBlock = createBlockFromNewRect(this, scale);
-				showAddBlockModal(newTimeBlock);
-			}
-
-			// remove tracking lines and texts
-			Hover.hideLines();
-		});
+		.on('mousedown', emptySpaceMouseDown)
+		.on('mousemove', emptySpaceMouseMove)
+		.on('mouseup', emptySpaceMouseOut)
+		.on('mouseout', emptySpaceMouseOut);
 
 	// bind data and draw day squares and time blocks for each day of the week
 	setWeeklyData(weeklySchedule);
@@ -193,7 +131,8 @@ export function createSvg(weeklySchedule) {
 		.attr('x', dimensions.dayWidth / 2)
 		.attr('y', 20)
 		.attr('text-anchor', 'middle')
-		.text(day => day.key);
+		.text(day => day.key)
+		.lower();
 
 	// create border for each day square
 	canvas.selectAll('g.day-square').append('rect')
@@ -239,26 +178,25 @@ export function setFillMode(enable = true) {
 	}
 }
 
+export function showMessage(message) {
+	document.getElementById('messages-to-user').textContent = message;
+}
+
 function createEmptyBlocks() {
 	const dimensions = getDimensions();
 	const emptyBlocksSchedule = timeBlockService.getActiveWeeklySchedule().getEmptyTimeBlocks();
 
-	d3.selectAll('g.day').each(function(day, index) {
-
-		// create scale for the current day
-		const scale = d3.scaleTime()
-			.domain([moment().day(index).startOf('day').toDate(), moment().day(index).endOf('day').toDate()])
-			.range([0, dimensions.dayHeight]);
+	d3.selectAll('g.day').each(function(day) {
 
 		d3.select(this).selectAll('g.day-square').selectAll('rect.time-block-new')
-			.data(emptyBlocksSchedule.daysWithTimeBlocks[index].values)
+			.data(emptyBlocksSchedule.daysWithTimeBlocks[day.index].values)
 			.enter()
 			.append('rect')
 			.attr('class', 'time-block time-block-new')
 			.attr('x', 0)
-			.attr('y', timeBlock => scale(timeBlock.startTime))
+			.attr('y', timeBlock => day.scale(timeBlock.startTime))
 			.attr('width', dimensions.dayWidth)
-			.attr('height', timeBlock => scale(timeBlock.endTime) - scale(timeBlock.startTime))
+			.attr('height', timeBlock => day.scale(timeBlock.endTime) - day.scale(timeBlock.startTime))
 			.attr('rx', 8)
 			.attr('ry', 8)
 			.attr('stroke-dasharray', '10, 5')
@@ -270,48 +208,9 @@ function createEmptyBlocks() {
 				datum.animate = true;
 				animateDashes.call(this, datum);
 			})
-			.on('mouseover', function(datum) {
-				if (mode === 'fill') {
-					// disable animation and show rect fill
-					datum.animate = false;
-					d3.select(this).interrupt();
-					d3.select(this)
-						.transition().duration(400)
-						.attr('fill-opacity', 0.7);
-				}
-			})
-			.on('mouseout', function(datum) {
-				if (mode === 'fill') {
-					// enable animation and hide rect fill
-					datum.animate = true;
-					d3.select(this).interrupt();
-					d3.select(this)
-						.transition().duration(400)
-						.attr('fill-opacity', 0.0)
-						.on('end', animateDashes);
-				}
-			})
-			.on('click', function(block) {
-				mode = '';
-
-				// disable animation
-				block.animate = false;
-
-				// remove all other empty time block rects
-				const rect = this;
-				d3.selectAll('.time-block-new').each(function() {
-					if (this !== rect)
-						d3.select(this).remove();
-				});
-
-				// show add block modal w/clicked empty time block
-				timeBlockModal.show(
-					block,
-					'add',
-					() => { setFillMode(false); setWeeklyData(); },
-					() => setFillMode(false)
-				);
-			});
+			.on('mouseover', fillBlockMouseOver)
+			.on('mouseout', fillBlockMouseOut)
+			.on('click', fillBlockClick);
 	});
 }
 
@@ -335,10 +234,10 @@ function animateDashes(datum) {
 	}
 }
 
-function createBlockFromNewRect(svgElement, scale) {
-	const snapTo = getSnapTo(svgElement, scale);
+function createBlockFromNewRect(svgElement) {
+	const snapTo = getSnapTo(svgElement);
 	const newRectTopY = d3.select('.time-block-new').attr('y');
-	const startTime = scale.invert(newRectTopY);
+	const startTime = snapTo.scale.invert(newRectTopY);
 	return new WeeklyTimeBlock({
 		dayOfWeek: WeeklySchedule.days[snapTo.day],
 		startHour: startTime.getHours(),
@@ -365,163 +264,54 @@ function cancelBlockCreation() {
 }
 
 /** Binds the weekly data, overriding previous data, then redraws the SVG elements. */
-function setWeeklyData(weeklySchedule = timeBlockService.getActiveWeeklySchedule()) {
-	if (!(weeklySchedule instanceof WeeklySchedule))
-		throw new Error('Invalid argument in SvgService.createSvg');
+export function setWeeklyData(weeklySchedule = timeBlockService.getActiveWeeklySchedule()) {
+	const dimensions = getDimensions();
 
 	// bind day data and create a svg groups for each day column and day square
-	const dimensions = getDimensions();
 	d3.select('.canvas')
 			.selectAll('g.day')
-			.data(weeklySchedule.daysWithTimeBlocks)
+			.data(weeklySchedule.daysWithTimeBlocks, day => day.index)
 			.enter()
 		.append('g')
 			.attr('class', 'day')
-			.attr('transform', (day, index) => `translate(${index*dimensions.dayWidth}, 0)`)
+			.attr('transform', (day) => `translate(${day.index*dimensions.dayWidth}, 0)`)
 		.append('g')
 			.attr('class', 'day-square')
-			.attr('transform', `translate(0, ${dimensions.marginTop})`);
+			.attr('transform', `translate(0, ${dimensions.marginTop})`)
+	d3.selectAll('g.day').selectAll('g.day-square').data(weeklySchedule.daysWithTimeBlocks, day => day.index);
 
-	// draw time blocks for each day
-	d3.selectAll('g.day-square').each(function(day, dayIndex) {
-
-		// y-scale for the current day
-		const domainStart = moment().day(dayIndex).startOf('day').toDate();
-		const domainEnd = moment().day(dayIndex).endOf('day').toDate();
+	// create and store a scale for each day into each day's datum
+	d3.selectAll('g.day').selectAll('g.day-square').each(day => {
+		const domainStart = moment().day(day.index).startOf('day').toDate();
+		const domainEnd = moment().day(day.index).endOf('day').toDate();
 		const yScale = d3.scaleTime()
 			.domain([domainStart, domainEnd])
 			.range([0, dimensions.dayHeight]);
-
-		// create time block rects
-		const blockRects = d3.select(this) // this is the <g> day-square element
-			.selectAll('rect.time-block')
-			.data(day => day.values, block => block.blockID); // values are time blocks
-
-		blockRects.enter()
-			.append('rect')
-				.attr('class', block => 'time-block ' + timeBlockColorClass(block))
-				.attr('x', 0)
-				.attr('y', block => yScale(block.startTime))
-				.attr('rx', 8)
-				.attr('ry', 8)
-				.attr('width', dimensions.dayWidth)
-				.attr('height', block => yScale(block.endTime) - yScale(block.startTime))
-				.on('click', timeBlockClicked)
-				.call(d3.drag()
-					.on('drag', function(timeBlock) {
-						if (mode !== '')
-							return;
-
-						const schedule = timeBlockService.getActiveWeeklySchedule();
-						const newTopY = +d3.select(this).attr('y') + d3.event.dy;
-						const [topBoundaryY, bottomBoundaryY] = schedule.findGrowthBoundaries(timeBlock.blockID).map(yScale);
-						const newBottomY = +d3.select(this).attr('height') + newTopY;
-
-						// move/resize rect
-						if (newTopY < topBoundaryY)
-							d3.select(this).attr('y', topBoundaryY);
-						else if (newBottomY > bottomBoundaryY)
-							d3.select(this).attr('y', bottomBoundaryY - +d3.select(this).attr('height'));
-						else
-							d3.select(this).attr('y', newTopY);
-
-						// determine positioning/values for top/bottom lines/texts
-						const paddingV = 2.5;
-						const paddingH = 5;
-						const topTime = yScale.invert(newTopY);
-						const [topHours12, topMeridiem] = to12Hours(topTime.getHours());
-						const bottomTime =yScale.invert(newBottomY);
-						const [bottomHours12, bottomMeridiem] = to12Hours(bottomTime.getHours());
-						const x = d3.mouse(d3.select('.tracking-empty').node())[0];
-						const topLineText = `${zPad(topHours12)}:${zPad(topTime.getMinutes())} ${topMeridiem}`;
-						const bottomLineText = `${zPad(bottomHours12)}:${zPad(bottomTime.getMinutes())} ${bottomMeridiem}`;
-
-						// adjust top and bottom tracking lines/texts
-						Hover.showTopLine(newTopY, x, newTopY - 10, topLineText);
-						Hover.showBottomLine(newBottomY, x, newBottomY + 21, bottomLineText);
-					})
-					.on('end', function(timeBlock) {
-						if (mode !== '')
-							return;
-
-						const newTopY = +d3.select(this).attr('y') + d3.event.dy;
-						const newBottomY = +d3.select(this).attr('height') + newTopY;
-						const newStartTime = yScale.invert(newTopY);
-						const newEndTime = yScale.invert(newBottomY);
-
-						let tempModifiedTimeBlock = new WeeklyTimeBlock(timeBlock);
-						tempModifiedTimeBlock.startHour = newStartTime.getHours();
-						tempModifiedTimeBlock.startMinute = newStartTime.getMinutes();
-						tempModifiedTimeBlock.endHour = newEndTime.getHours();
-						tempModifiedTimeBlock.endMinute = newEndTime.getMinutes();
-
-						Hover.hideLines();
-
-						const editCanceled = () => d3.select(this)
-							.transition()
-							.duration(1000)
-							.delay(250)
-							.ease(d3.easeExp)
-							.attr('y', block => yScale(block.startTime));
-						setTimeout(() =>
-							timeBlockModal.show(tempModifiedTimeBlock, 'edit', setWeeklyData, editCanceled, 0)
-						);
-					})
-				);
-
-		blockRects.each(function(block) {
-			if (!(block instanceof WeeklyTimeBlock))
-				throw new Error('bleh');
-
-			const blockRect = d3.select(this);
-
-			// determine if start time was changed
-			const rectY = blockRect.attr('y');
-			const rectStartDate = yScale.invert(rectY);
-			const rectStartTime = moment(rectStartDate);
-			const isStartSame = rectStartTime.isSame(block.startTime, 'minute');
-
-			// determine if end time was changed
-			const rectEndY = toNum(blockRect.attr('y')) + toNum(blockRect.attr('height'));
-			const rectEndTime = moment(yScale.invert(rectEndY));
-			const isEndSame = rectEndTime.isSame(block.endTime, 'minute');
-
-			if (!isStartSame) {
-				blockRect.transition().duration(1000).ease(d3.easeExp)
-					.attr('y', block => yScale(block.startTime))
-					.attr('height', block => yScale(block.endTime) - yScale(block.startTime));
-			}
-
-			if (!isEndSame && isStartSame) {
-				blockRect.transition().duration(1000).ease(d3.easeExp)
-					.attr('height', block => yScale(block.endTime) - yScale(block.startTime));
-			}
-
-			// check if type of time block has changed (no text/calls, text/call only, both texts/calls)
-			if (!blockRect.classed(block.type)) {
-				WeeklyTimeBlock.blockTypes.forEach(type => blockRect.classed(type, false));
-				blockRect.classed(block.type, true);
-			}
-		});
-
-		blockRects.exit()
-			.transition()
-			.delay(200)
-			.duration(1250)
-			.style('opacity', 0.0)
-			.remove();
+		day.scale = yScale;
 	});
+
+	// bind time block data to time block rects
+	const blockRects = d3.selectAll('g.day-square') // this is the <g> day-square element
+		.selectAll('rect.time-block')
+		.data(day => day.values, block => block.blockID); // values are time blocks
+
+	// ceate/update/delete time block rects
+	const updateCompletePromise = updateScheduleView(blockRects, weeklySchedule);
+	return updateCompletePromise;
+}
+
+export function updateScheduleView(blockRects, weeklySchedule = {}) {
+	const animationsCompletePromise = removeBlockRects(blockRects)
+		.then(updateExistingBlockRects)
+		.then(createBlockRects)
+		.then(() => weeklySchedule);
+
+	return animationsCompletePromise;
 }
 
 /** Determine the coordinates, x-scale day value, and y-scale time-value of the location to snap to */
-function getSnapTo(svgElement, scale) {
+function getSnapTo(svgElement) {
 	const [mouseX, mouseY] = d3.mouse(svgElement);
-	const mouseTime = moment(scale.invert(mouseY));
-	const [hours24, minutes] = [ mouseTime.hours(), mouseTime.minutes() ];
-	const [snapToHours24, snapToMinutes] = findClosest30Mins(hours24, minutes);
-	const [snapToHours12, meridiem] = to12Hours(snapToHours24);
-	const snapToTime = moment().hours(snapToHours24).minutes(snapToMinutes).toDate();
-	const snapToY = scale(snapToTime);
 
 	// determine day of week
 	const dimensions = getDimensions();
@@ -533,10 +323,23 @@ function getSnapTo(svgElement, scale) {
 	if (dayIndex > 6)
 		throw new Error('Day not found in SvgService.getMouseDay');
 
+	// create scale
+	const scale = d3.scaleTime()
+		.domain([moment().startOf('day').toDate(), moment().endOf('day').toDate()])
+		.range([0, getDimensions().dayHeight]);
+
+	// calculate remaining values
+	const mouseTime = moment(scale.invert(mouseY));
+	const [hours24, minutes] = [ mouseTime.hours(), mouseTime.minutes() ];
+	const [snapToHours24, snapToMinutes] = findClosest30Mins(hours24, minutes);
+	const [snapToHours12, meridiem] = to12Hours(snapToHours24);
+	const snapToTime = moment().hours(snapToHours24).minutes(snapToMinutes).toDate();
+	const snapToY = scale(snapToTime);
+
 	// find the boundaries' time-values for this empty space
 	const [topBoundaryTime, bottomBoundaryTime] = timeBlockService.getActiveWeeklySchedule().findEmptyBoundaries(snapToTime, dayIndex);
 
-	return { x: mouseX, y: snapToY, day: dayIndex, hours12: snapToHours12, hours24: snapToHours24, minutes: snapToMinutes, meridiem, topBoundaryTime, bottomBoundaryTime };
+	return { x: mouseX, y: snapToY, day: dayIndex, hours12: snapToHours12, hours24: snapToHours24, minutes: snapToMinutes, meridiem, topBoundaryTime, bottomBoundaryTime, scale };
 }
 
 function findClosest30Mins(hours24, minutes) {
@@ -551,7 +354,7 @@ function findClosest30Mins(hours24, minutes) {
 	return [resultHours, resultMinutes];
 };
 
-function getDimensions() {
+export function getDimensions() {
 	const colPadding = 15;
 	const marginTop = 30;
 	const marginLeft = 45;
@@ -585,6 +388,17 @@ function getDimensions() {
 	}
 }
 
+export function getDayScale(dayIndex) {
+	let scale;
+	d3.selectAll('g.day-square')
+		.filter(day => day.index === dayIndex)
+		.each(day => scale = day.scale);
+	if (scale === undefined)
+		throw new Error(`Unable to find scale for day index ${dayIndex}`);
+
+	return scale;
+}
+
 function getSquareForDay(dayIndex) {
 	let targetDaySquare;
 	d3.selectAll('g.day-square').each(function(day, index) {
@@ -596,11 +410,126 @@ function getSquareForDay(dayIndex) {
 }
 
 function timeBlockColorClass(timeBlock) {
+console.log('timeBlock', timeBlock);
+	if (!timeBlock)
+		return '';
+
 	if (timeBlock.isReceivingTexts) {
 		return timeBlock.isReceivingCalls ? 'text-and-call' : 'text-only';
 	} else {
 		return timeBlock.isReceivingCalls ? 'call-only' : 'no-text-or-call';
 	}
+}
+
+/** create needed new block rects */
+function createBlockRects(blockRects) {
+	console.log('createBlockRects.blockRects', blockRects);
+	const newBlockRects = blockRects.enter().filter(block => block.startHour !== undefined).append('rect');
+	if (newBlockRects.empty())
+		return Promise.resolve(blockRects);
+
+	// create block rect with an initial height of 0
+	newBlockRects
+		.attr('class', block => 'time-block ' + timeBlockColorClass(block))
+		.attr('x', 0)
+		.attr('y', block => {
+			const scale = getDayScale(block.dayIndex);
+			return scale(block.midTime);
+		})
+		.attr('rx', 8)
+		.attr('ry', 8)
+		.attr('width', getDimensions().dayWidth)
+		.attr('height', 0)
+		.each(function(block) { block.rect = this })
+		.on('click', timeBlockClicked)
+		.call(d3.drag()
+			.on('drag', timeBlockDragged)
+			.on('end', timeBlockDragEnded)
+		);
+
+	// grow block rect to its actual size
+	return new Promise(resolve =>
+		newBlockRects.transition().duration(550).ease(d3.easeBounce)
+			.attr('y', block => getDayScale(block.dayIndex)(block.startTime))
+			.attr('height', block => {
+				const scale = getDayScale(block.dayIndex);
+				return scale(block.endTime) - scale(block.startTime);
+			})
+			.on('end', () => resolve(blockRects))
+	);
+}
+
+function updateExistingBlockRects(blockRects) {
+	let updateCompletePromise = Promise.resolve(blockRects);
+
+	blockRects.each(function(block) {
+		const scale = getDayScale(block.dayIndex);
+		const blockRect = d3.select(this);
+		const { startMoment, endMoment } = getRectBoundaryMoments(blockRect);
+		block.rect = this; // sometimes you need to be told twice
+
+		// grow or shrink time block rect if it has been changed
+		if (!startMoment.isSame(block.startMoment, 'minute') || !endMoment.isSame(block.endMoment, 'minute')) {
+			updateCompletePromise = new Promise(resolve =>
+				blockRect.transition().duration(650).ease(d3.easeSin)
+					.attr('y', block => scale(block.startTime))
+					.attr('height', block => scale(block.endTime) - scale(block.startTime))
+					.on('end', () => resolve(blockRects))
+			);
+		}
+
+		// check if type of time block has changed (no text/calls, text/call only, both texts/calls)
+		if (!blockRect.classed(block.type)) {
+			WeeklyTimeBlock.blockTypes.forEach(type => blockRect.classed(type, false));
+			blockRect.classed(block.type, true);
+		}
+	});
+
+	return updateCompletePromise;
+}
+
+function removeBlockRects(blockRects) {
+	if (blockRects.exit().empty())
+		return Promise.resolve(blockRects);
+
+	let blocksRemovedPromise;
+	blockRects.exit().each(function(block) {
+		blocksRemovedPromise = new Promise((resolve, reject) => {
+			const blockRect = d3.select(this);
+			const origColorClass = timeBlockColorClass(block);
+			const turnRed = () => blockRect.classed(origColorClass, false).classed('no-text-or-call', true);
+			const turnBack = () => blockRect.classed('no-text-or-call', false).classed(origColorClass, true);
+			const flashOnce = () => timeout(80).then(turnBack).then(() => timeout(80)).then(turnRed);
+			const removeBlock = () => blockRect.transition().duration(750)
+				.style('opacity', 0.0)
+				.on('end', () => resolve(blockRects))
+				.remove();
+			
+			timeout(0).then(turnRed)
+				.then(flashOnce)
+				.then(flashOnce)
+				.then(removeBlock);
+		});
+	});
+
+	return blocksRemovedPromise;
+}
+
+/** Given a D3 selection of a rect positioned within a day square, its start and
+ * end times are determined and returned as moment properties of an object. */
+export function getRectBoundaryMoments(blockRect) {
+	console.log('inner blockRect datum', blockRect.datum());
+	const scale = getDayScale(blockRect.datum().dayIndex);
+
+	// determine start time
+	const rectStartY = blockRect.attr('y');
+	const startMoment = moment(scale.invert(rectStartY));
+
+	// determine end time
+	const rectEndY = toNum(blockRect.attr('y')) + toNum(blockRect.attr('height'));
+	const endMoment = moment(scale.invert(rectEndY));
+
+	return { startMoment, endMoment };
 }
 
 class Hover {
@@ -650,6 +579,7 @@ class Hover {
 		d3.select('#track-text-border-top').attr('display', 'none');
 	}
 
+	/** remove mouseover tracking lines and texts */
 	static hideBotomLine() {
 		d3.select('#track-line-bottom').attr('display', 'none');
 		d3.select('#track-text-bottom').attr('display', 'none');
@@ -664,13 +594,13 @@ class Hover {
 
 // --------------------------- Event Handlers --------------------------- \\
 
-function timeBlockClicked(timeBlock) {
+function timeBlockClicked(block) {
 	switch (mode) {
 
 		// show confirmation modal
 		case 'delete':
 			const deleteBlock = () => {
-				const newSchedule = timeBlockService.remove(timeBlock);
+				const newSchedule = timeBlockService.remove(block);
 				setWeeklyData(newSchedule);
 				setDeleteMode(false);
 				toolbar.clearButtons();
@@ -683,8 +613,192 @@ function timeBlockClicked(timeBlock) {
 			confirmModal.show(deleteBlock, cancelDelete);
 			break;
 
+		case 'copy':
+			if (d3.select('g.day-square rect.time-block.selected').empty()) {
+				d3.select(this).classed('selected', true);
+				copyMode.showDaySelectionSquares(block.dayIndex);
+			}
+			break;
+
 		// show edit time block modal
-		default:
-			timeBlockModal.show(timeBlock, 'edit', setWeeklyData);
+		case '':
+			timeBlockModal.show(block, 'edit', setWeeklyData);
 	}
+}
+
+function timeBlockDragged(block) {
+	if (mode !== '')
+		return;
+
+	const scale = getDayScale(block.dayIndex);
+	const schedule = timeBlockService.getActiveWeeklySchedule();
+	const newTopY = +d3.select(this).attr('y') + d3.event.dy;
+	const [topBoundaryY, bottomBoundaryY] = schedule.findGrowthBoundaries(block.blockID).map(scale);
+	const newBottomY = +d3.select(this).attr('height') + newTopY;
+
+	// move/resize rect
+	if (newTopY < topBoundaryY)
+		d3.select(this).attr('y', topBoundaryY);
+	else if (newBottomY > bottomBoundaryY)
+		d3.select(this).attr('y', bottomBoundaryY - +d3.select(this).attr('height'));
+	else
+		d3.select(this).attr('y', newTopY);
+
+	// determine positioning/values for top/bottom lines/texts
+	const paddingV = 2.5;
+	const paddingH = 5;
+	const topTime = scale.invert(newTopY);
+	const [topHours12, topMeridiem] = to12Hours(topTime.getHours());
+	const bottomTime =scale.invert(newBottomY);
+	const [bottomHours12, bottomMeridiem] = to12Hours(bottomTime.getHours());
+	const x = d3.mouse(d3.select('.tracking-empty').node())[0];
+	const topLineText = `${zPad(topHours12)}:${zPad(topTime.getMinutes())} ${topMeridiem}`;
+	const bottomLineText = `${zPad(bottomHours12)}:${zPad(bottomTime.getMinutes())} ${bottomMeridiem}`;
+
+	// adjust top and bottom tracking lines/texts
+	Hover.showTopLine(newTopY, x, newTopY - 10, topLineText);
+	Hover.showBottomLine(newBottomY, x, newBottomY + 21, bottomLineText);
+}
+
+function timeBlockDragEnded(block) {
+	if (mode !== '')
+		return;
+
+	const scale = getDayScale(block.dayIndex);
+	const newTopY = +d3.select(this).attr('y') + d3.event.dy;
+	const newBottomY = +d3.select(this).attr('height') + newTopY;
+	const newStartTime = scale.invert(newTopY);
+	const newEndTime = scale.invert(newBottomY);
+
+	let tempModifiedTimeBlock = new WeeklyTimeBlock(block);
+	tempModifiedTimeBlock.startHour = newStartTime.getHours();
+	tempModifiedTimeBlock.startMinute = newStartTime.getMinutes();
+	tempModifiedTimeBlock.endHour = newEndTime.getHours();
+	tempModifiedTimeBlock.endMinute = newEndTime.getMinutes();
+
+	Hover.hideLines();
+
+	const editCanceled = () => d3.select(this)
+		.transition()
+		.duration(1000)
+		.delay(250)
+		.ease(d3.easeExp)
+		.attr('y', block => scale(block.startTime));
+	setTimeout(() =>
+		timeBlockModal.show(tempModifiedTimeBlock, 'edit', setWeeklyData, editCanceled, 0)
+	);
+}
+
+/** Enables 'creating' mode and Creates a new 30-min time block rect at the location clicked. */
+function emptySpaceMouseDown() {
+	if (mode !== '')
+		return;
+
+	mode = 'creating';
+
+	const dimensions = getDimensions();
+	const snapTo = getSnapTo(this);
+
+	// determine the necessary height to make the new rect 30 mins long
+	const startTime = snapTo.scale.invert(snapTo.y);
+	const thirtyMinAfterStart = moment(startTime).add(30, 'minutes');
+	const endTimeY = snapTo.scale(thirtyMinAfterStart.toDate());
+	const newRectHeight = endTimeY - snapTo.y;
+	d3.select('.underground-canvas').append('rect')
+		.attr('class', 'time-block time-block-new')
+		.attr('x', dimensions.dayWidth * snapTo.day)
+		.attr('y', snapTo.y)
+		.attr('rx', 8)
+		.attr('ry', 8)
+		.attr('width', dimensions.dayWidth)
+		.attr('height', newRectHeight);
+}
+
+function emptySpaceMouseMove() {
+	const snapTo = getSnapTo(this);
+	const lineText = `${snapTo.hours12}:${zPad(snapTo.minutes)} ${snapTo.meridiem}`;
+	
+	if (mode === 'creating') {
+
+		// determine height to snap to for new time block rect
+		const newRect = d3.select('.time-block-new');
+		let newRectHeight;
+		if (snapTo.y - newRect.attr('y') > 1) {
+			newRectHeight = snapTo.y - newRect.attr('y');
+		} else {
+			// determine the necessary height to make the new rect 30 mins long
+			const startTime = snapTo.scale.invert(newRect.attr('y'));
+			const thirtyMinAfterStart = moment(startTime).add(30, 'minutes');
+			const endTimeY = snapTo.scale(thirtyMinAfterStart.toDate());
+			newRectHeight = endTimeY - newRect.attr('y');
+		}
+
+		newRect.attr('height', newRectHeight);
+
+		// move tracking line/text for the bottom of the new time block rect
+		const lineY = toNum(newRect.attr('y')) + toNum(newRect.attr('height'));
+		Hover.showBottomLine(lineY, snapTo.x, snapTo.y + 21, lineText);
+	}
+
+	// move line/text to mouse pointer and display corresponding time-value
+	else if (mode === '') {
+		Hover.showTopLine(snapTo.y, snapTo.x, snapTo.y - 10, lineText);
+	}
+}
+
+/** Create time block from new rect data and show add block modal using the new block. */
+function emptySpaceMouseOut() {
+	if (mode === 'creating') {
+		mode = '';
+		const newTimeBlock = createBlockFromNewRect(this);
+		showAddBlockModal(newTimeBlock);
+	}
+
+	// remove tracking lines and texts
+	Hover.hideLines();
+}
+
+function fillBlockMouseOver(fillBlock) {
+	if (mode === 'fill') {
+		// disable animation and show rect fill
+		fillBlock.animate = false;
+		d3.select(this).interrupt();
+		d3.select(this)
+			.transition().duration(200)
+			.attr('fill-opacity', 0.7);
+	}
+}
+
+function fillBlockMouseOut(fillBlock) {
+	if (mode === 'fill') {
+		// enable animation and hide rect fill
+		fillBlock.animate = true;
+		d3.select(this).interrupt();
+		d3.select(this)
+			.transition().duration(200)
+			.attr('fill-opacity', 0.0)
+			.on('end', animateDashes);
+	}
+}
+
+function fillBlockClick(fillBlock) {
+	mode = '';
+
+	// disable animation
+	fillBlock.animate = false;
+
+	// remove all other empty time block rects
+	const rect = this;
+	d3.selectAll('.time-block-new').each(function() {
+		if (this !== rect)
+			d3.select(this).remove();
+	});
+
+	// show add block modal w/clicked empty time block
+	timeBlockModal.show(
+		fillBlock,
+		'add',
+		() => { setFillMode(false); setWeeklyData(); },
+		() => setFillMode(false)
+	);
 }

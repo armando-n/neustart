@@ -53,8 +53,10 @@ function parseUrl() {
 	if ($urlPartsLength > 1) {
 		$action = $urlParts[1];
 		$_SESSION['action'] = $_SESSION['resourceID'] = $action;
-	} else
+	} else {
 		$_SESSION['action'] = '';
+		unset($_SESSION['resourceID']);
+	}
 
 	// process any arguments
 	$_SESSION['arguments'] = array();

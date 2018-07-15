@@ -12,7 +12,15 @@ export class WeeklySchedule {
 
 		// allow WeeklySchedule object as argument
 		if (rawTimeBlocks instanceof WeeklySchedule) {
-			daysWithTimeBlocks = rawTimeBlocks.daysWithTimeBlocks;
+			const scheduleToCopy = rawTimeBlocks;
+			daysWithTimeBlocks = scheduleToCopy.daysWithTimeBlocks
+				.map(day => ({
+					index: day.index,
+					key: day.key,
+					scale: day.scale,
+					values: day.values.map(block => new WeeklyTimeBlock(block))
+				})
+			);
 		}
 
 		// argument should be an array of either raw time block records or nested records grouped by day
@@ -26,11 +34,14 @@ export class WeeklySchedule {
 				daysWithTimeBlocks = rawTimeBlocks;
 			}
 
+			// rawTimeBlocks actually is an array of raw time blocks
 			else {
 				rawTimeBlocks = rawTimeBlocks.map(validateBlock);
 
 				// group time blocks by day of week
-				daysWithTimeBlocks = d3.nest().key(rawBlock => rawBlock.dayOfWeek).entries(rawTimeBlocks);
+				daysWithTimeBlocks = d3.nest()
+					.key(rawBlock => rawBlock.dayOfWeek)
+					.entries(rawTimeBlocks);
 			}
 
 		}
@@ -39,18 +50,13 @@ export class WeeklySchedule {
 			throw new Error('Invalid argument in WeeklySchedule constructor');
 		}
 
-		// fill in any missing day objects
-		const days = WeeklySchedule.days;
-		const allDays = [];
-		for (let dayIndex = 0, dataIndex = 0; dayIndex < days.length; dayIndex++, dataIndex++) {
-			if (daysWithTimeBlocks[dataIndex] && daysWithTimeBlocks[dataIndex].key === days[dayIndex]) {
-				allDays.push(daysWithTimeBlocks[dataIndex]);
-			}
-			else {
-				allDays.push({ key: days[dayIndex], values: [] });
-				dataIndex--;
-			}
-		}
+		// fill in any missing day objects and add index property to each day
+		const allDays = WeeklySchedule.days.map((dayOfWeek, dayIndex) =>
+			(daysWithTimeBlocks[0].key === dayOfWeek)
+			? Object.assign(daysWithTimeBlocks.shift(), { index: dayIndex })
+			: { key: dayOfWeek, values: [], index: dayIndex }
+		)
+
 		this.daysWithTimeBlocks = allDays;
 	}
 
@@ -86,6 +92,184 @@ export class WeeklySchedule {
 	getBlock(blockID) {
 		const [dayIndex, blockIndex] = getDayAndBlockIndexes.call(this, blockID);
 		return this.daysWithTimeBlocks[dayIndex].values[blockIndex];
+	}
+
+	/** Creates and returns a new WeeklyScheduleModel object, to which it
+	 * copies the given time block to each day indicated by the dayIndexesAndOverwrites argument,
+	 * which is an array of objects. Each object indicates a day index to copy the block to w/the
+	 * 'index' property.  The objects also indcate whether or not to overwrite any existing time
+	 * blocks for that day where there is overlap using the 'overwrite' property. An object is
+	 * returned w/three array properties named 'createdBlocks', 'updatedBlocks', and 'deletedBlocks'.
+	 * Each array contains blocks that were created, updated, and deleted during the copying process. */
+	copyBlock(timeBlock, dayIndexesAndOverwrites) {
+		const newSchedule = new WeeklySchedule(this);
+		const createdBlocks = [];
+		const updatedBlocks = [];
+		const deletedBlocks = [];
+
+		// copy time block to each day of the week matching the given day indexes
+		dayIndexesAndOverwrites.forEach(({ index, overwrite }) => {
+			const copyResults = this.copyBlockToDay(timeBlock, index, overwrite, newSchedule);
+
+			createdBlocks.push(...copyResults.createdBlocks);
+			updatedBlocks.push(...copyResults.updatedBlocks);
+			deletedBlocks.push(...copyResults.deletedBlocks);
+		});
+
+		return { schedule: newSchedule, createdBlocks, updatedBlocks, deletedBlocks };
+	}
+
+	copyBlockToDay(timeBlock, dayIndex, overwrite = true, newSchedule = new WeeklySchedule(this)) {
+		let addCopyBlock = true;
+		const day = newSchedule.daysWithTimeBlocks[dayIndex];
+		const copyBlock = timeBlock.copy(dayIndex);
+		const createdBlocks = [];
+		const updatedBlocks = [];
+		const deletedBlocks = [];
+
+		// adjust time blocks and copy block for the day as needed
+		for (let blockIndex = day.values.length-1; blockIndex >= 0; blockIndex--) {
+			const currentBlock = day.values[blockIndex];
+
+			// copy block completely encompasses current block
+			if (
+				(
+					copyBlock.startMoment.isBefore(currentBlock.startMoment, 'minute') ||
+					copyBlock.startMoment.isSame(currentBlock.startMoment, 'minute')
+				) &&
+				(
+					copyBlock.endMoment.isAfter(currentBlock.endMoment, 'minute') ||
+					copyBlock.endMoment.isSame(currentBlock.endMoment, 'minute')
+				)
+			) {
+				if (overwrite) {
+					// delete current block
+					deletedBlocks.push(newSchedule.daysWithTimeBlocks[dayIndex].values.splice(blockIndex, 1).shift());
+				} else {
+					// create a new block from current block end time to copy block end time (or don't, if they're the same)
+					if (!currentBlock.endMoment.isSame(copyBlock.endMoment, 'minute')) {
+						const newBlock = new WeeklyTimeBlock(copyBlock);
+						newBlock.blockID = undefined;
+						newBlock.startMoment = currentBlock.endMoment;
+						newBlock.endMoment = copyBlock.endMoment;
+						createdBlocks.push(newBlock);
+					}
+
+					// move copy block end time to current block start time
+					copyBlock.endMoment = currentBlock.startMoment;
+				}
+			}
+
+			// copy block overlaps beginning section of current block
+			else if (
+				(
+					copyBlock.startMoment.isBefore(currentBlock.startMoment, 'minute') ||
+					copyBlock.startMoment.isSame(currentBlock.startMoment, 'minute')
+				) &&
+				copyBlock.endMoment.isAfter(currentBlock.startMoment, 'minute') &&
+				copyBlock.endMoment.isBefore(currentBlock.endMoment, 'minute')
+			) {
+				if (overwrite) {
+					// move current block start time to copy block end time (or delete current block if doing so would make it's start time >= it's end time)
+					if (!copyBlock.endMoment.isSame(currentBlock.endMoment, 'minute') && !copyBlock.endMoment.isAfter(currentBlock.endMoment, 'minute')) {
+						currentBlock.startMoment = copyBlock.endMoment;
+						updatedBlocks.push(currentBlock);
+					} else {
+						deletedBlocks.push(newSchedule.daysWithTimeBlocks[dayIndex].values.splice(blockIndex, 1).shift());
+					}
+				} else {
+					// move copy block end time to current block start time
+					copyBlock.endMoment = currentBlock.startMoment;
+				}
+			}
+
+			// copy block overlaps middle section of current block
+			else if (
+				copyBlock.startMoment.isAfter(currentBlock.startMoment, 'minute') &&
+				copyBlock.startMoment.isBefore(currentBlock.endMoment, 'minute') &&
+				copyBlock.endMoment.isBefore(currentBlock.endMoment, 'minute')
+			) {
+				if (overwrite) {
+					// create a new block from copy block end time to current block end time
+					const newBlock = currentBlock.copy();
+					newBlock.startMoment = copyBlock.endMoment;
+					newBlock.endMoment = currentBlock.endMoment;
+					createdBlocks.push(newBlock);
+
+					// move current block end time to copy block start time
+					currentBlock.endMoment = copyBlock.startMoment;
+					updatedBlocks.push(currentBlock);
+				} else {
+					// delete copy block (this makes single-block copy not occur at all)
+					addCopyBlock = false;
+				}
+
+				// no more time blocks need to be checked for overlap for the day - this would be the last one
+				break;
+			}
+
+			// copy block overlaps end section of current block
+			else if (
+				copyBlock.startMoment.isAfter(currentBlock.startMoment, 'minute') &&
+				copyBlock.startMoment.isBefore(currentBlock.endMoment, 'minute') &&
+				(
+					copyBlock.endMoment.isAfter(currentBlock.endMoment, 'minute') ||
+					copyBlock.endMoment.isSame(currentBlock.endMoment, 'minute')
+				)
+			) {
+				if (overwrite) {
+					// move current block end time to copy block start time
+					currentBlock.endMoment = copyBlock.startMoment;
+					updatedBlocks.push(currentBlock);
+				} else {
+					// move copy block start time to current block end time
+					copyBlock.startMoment = currentBlock.endMoment;
+				}
+
+				// no more time blocks need to be checked for overlap for the day - this would be the last one
+				break;
+			}
+		}
+
+		// sometimes the origin copy block rect itself doesn't need to be added
+		if (addCopyBlock && !copyBlock.startMoment.isSame(copyBlock.endMoment, 'minute'))
+			createdBlocks.push(copyBlock);
+
+		// add any block rects we've decided to add while keeping the data sorted
+		createdBlocks.forEach(block => newSchedule.daysWithTimeBlocks[dayIndex].values.push(block));
+		newSchedule.daysWithTimeBlocks[dayIndex].values.sort(comparator);
+
+		// const mergeResults = mergeIdentAdjacentBlocks([dayIndex]);
+		// const mergeResults = mergeIdenticalAdjacentBlocks.call(this, [dayIndex]); // TODO how should this affect the returned crud arrays?
+		// updatedBlocks.push(...mergeResults.updatedBlocks);
+		// deletedBlocks.push(...mergeResults.deletedBlocks);
+
+		return { schedule: newSchedule, createdBlocks, updatedBlocks, deletedBlocks }
+	}
+
+	mergeIdentAdjacentBlocks(dayIndexes) {
+		return mergeIdenticalAdjacentBlocks.call(this, dayIndexes);
+	}
+
+	/** Given a time range, searches the day of the time range for
+	 * any conflicting (i.e. overlapping) time blocks.  If any are
+	 * found, they are returned. */
+	getConflictingBlocks(startTime, endTime) {
+		const conflictBlocks = [];
+		const startMoment = moment(startTime);
+		const endMoment = moment(endTime);
+		const day = this.daysWithTimeBlocks[startMoment.day()];
+
+		day.values.forEach((timeBlock, blockIndex) => {
+			if (
+				timeBlock.startMoment.isBefore(endMoment, 'minute') &&
+				startMoment.isBefore(timeBlock.endMoment, 'minute')
+			) {
+				conflictBlocks.push(timeBlock);
+			}
+		});
+
+		return conflictBlocks;
 	}
 
 	/** Returns top & bottom boundaries (as moments) for the time block with the given ID.
@@ -268,6 +452,49 @@ function findIndexOfBlock(timeBlocks, blockID) {
 	}
 
 	return targetIndex;
+}
+
+function mergeIdenticalAdjacentBlocks(days = [0, 1, 2, 3, 4, 5, 6, 7]) {
+	const updatedBlocksObj = {};
+	const deletedBlocksObj = {};
+
+	days = days.filter(dayIndex => this.daysWithTimeBlocks[dayIndex].values.length > 1);
+
+	days.forEach(dayIndex => {
+		const currentDay = this.daysWithTimeBlocks[dayIndex];
+
+		// iterate through the day's blocks in reverse so that removals do not affect traversal
+		for (let i = currentDay.values.length-2; i >= 0; i--) {
+			const currentBlock = currentDay.values[i];
+			const blockAfterCurrent = currentDay.values[i + 1];
+			const areWeeklyTimeBlocks = currentBlock instanceof WeeklyTimeBlock && blockAfterCurrent instanceof WeeklyTimeBlock;
+			const areAdjacent = currentBlock.endMoment.isSame(blockAfterCurrent.startMoment, 'minute');
+			const areIdentical = currentBlock.equals(blockAfterCurrent);
+
+			if (!areWeeklyTimeBlocks)
+				continue;
+
+			if (!areAdjacent)
+				continue;
+
+			if (areIdentical) {
+				// delete the block after the current block and remove it from the update object if present
+				currentDay.values.splice(i + 1, 1);
+				deletedBlocksObj[blockAfterCurrent.blockID] = blockAfterCurrent;
+				if (updatedBlocksObj[blockAfterCurrent.blockID])
+					updatedBlocksObj[blockAfterCurrent.blockID] = false;
+
+				// update the current block so that it covers the space left by the block after it
+				currentBlock.endMoment = blockAfterCurrent.endMoment;
+				updatedBlocksObj[currentBlock.blockID] = currentBlock;
+			}
+		}
+	});
+
+	const updatedBlocks = Object.values(updatedBlocksObj).filter(value => value instanceof WeeklyTimeBlock);
+	const deletedBlocks = Object.values(deletedBlocksObj);
+
+	return { updatedBlocks, deletedBlocks };
 }
 
 function comparator(blockA, blockB) {

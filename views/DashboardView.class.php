@@ -13,8 +13,10 @@ class DashboardView {
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
 	<title>Neustart | Dashboard</title>
-	<script src="https://d3js.org/d3.v4.min.js"></script>
-	<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.22.0/moment.min.js"></script>
+	<!-- <script src="https://d3js.org/d3.v4.min.js"></script> -->
+	<script src="/js/d3.v4.min.js"></script>
+	<script src="/js/moment.min.js"></script>
+	<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.22.0/moment.min.js"></script> -->
 	<link rel="stylesheet" href="/css/dashboard.css" type="text/css" />
 </head>
 <body>
@@ -23,12 +25,18 @@ class DashboardView {
 		<div id="toolbar">
 			<div id="toolbar-buttons">
 				<button id="toolbar-fill" class="toggle-button" type="button">Fill</button>
+				<button id="toolbar-cancel" class="toggle-button" type="button">Cancel</button>
 				<button id="toolbar-copy" class="toggle-button" type="button">Copy</button>
+				<button id="toolbar-paste" class="toggle-button" type="button">Paste</button>
+				<input id="copy-overwrite" type="checkbox">
+				<label for="copy-overwrite">Overwrite all</label>
 				<button id="toolbar-delete" class="toggle-button" type="button">Delete</button>
 				<button id="toolbar-split" class="toggle-button" type="button">Split</button>
 				<button id="toolbar-add" class="toggle-button" type="button">Add</button>
 			</div>
 		</div>
+
+		<div id="messages-to-user"></div>
 
 		<div class="svg-wrapper">
 			<svg id="svg">
@@ -61,11 +69,11 @@ class DashboardView {
 			<fieldset>
 				<div class="input-group">
 					<label for="startTime" class="time-label">Start</label>
-					<input id="startTime" type="time" name="startTime" size="8" autofocus="autofocus" required="required" maxlength="12" pattern="^([0]?[1-9]|[1][0-2])$" title="Enter a valid time (HH:MM XM)" />
+					<input id="startTime" type="time" name="startTime" size="8" required="required" title="Enter a valid time (HH:MM XM)" />
 				</div>
 				<div class="input-group">
 					<label for="endTime" class="time-label">End</label>
-					<input id="endTime" type="time" name="endTime" size="8" autofocus="autofocus" required="required" maxlength="12" pattern="^([0]?[1-9]|[1][0-2])$" title="Enter a valid time (HH:MM XM)" />
+					<input id="endTime" type="time" name="endTime" size="8" required="required" title="Enter a valid time (HH:MM XM)" />
 				</div>
 			</fieldset>
 			<fieldset>
