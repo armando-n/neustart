@@ -296,14 +296,15 @@ export function setWeeklyData(weeklySchedule = timeBlockService.getActiveWeeklyS
 		.data(day => day.values, block => block.blockID); // values are time blocks
 
 	// ceate/update/delete time block rects
+	const updateCompletePromise = updateScheduleView(blockRects, weeklySchedule);
+	return updateCompletePromise;
+}
+
+export function updateScheduleView(blockRects, weeklySchedule = {}) {
 	const animationsCompletePromise = removeBlockRects(blockRects)
 		.then(updateExistingBlockRects)
 		.then(createBlockRects)
-		.then(() => weeklySchedule)
-		.catch(error=> {
-			console.log('error in time block rect crud promise');
-			console.log(error);
-		});
+		.then(() => weeklySchedule);
 
 	return animationsCompletePromise;
 }
@@ -409,6 +410,10 @@ function getSquareForDay(dayIndex) {
 }
 
 function timeBlockColorClass(timeBlock) {
+console.log('timeBlock', timeBlock);
+	if (!timeBlock)
+		return '';
+
 	if (timeBlock.isReceivingTexts) {
 		return timeBlock.isReceivingCalls ? 'text-and-call' : 'text-only';
 	} else {
@@ -418,10 +423,13 @@ function timeBlockColorClass(timeBlock) {
 
 /** create needed new block rects */
 function createBlockRects(blockRects) {
-	let createCompletePromise;
+	console.log('createBlockRects.blockRects', blockRects);
+	const newBlockRects = blockRects.enter().filter(block => block.startHour !== undefined).append('rect');
+	if (newBlockRects.empty())
+		return Promise.resolve(blockRects);
 
 	// create block rect with an initial height of 0
-	const newBlockRects = blockRects.enter().append('rect')
+	newBlockRects
 		.attr('class', block => 'time-block ' + timeBlockColorClass(block))
 		.attr('x', 0)
 		.attr('y', block => {
@@ -432,10 +440,15 @@ function createBlockRects(blockRects) {
 		.attr('ry', 8)
 		.attr('width', getDimensions().dayWidth)
 		.attr('height', 0)
-		.each(function(block) { block.rect = this });
+		.each(function(block) { block.rect = this })
+		.on('click', timeBlockClicked)
+		.call(d3.drag()
+			.on('drag', timeBlockDragged)
+			.on('end', timeBlockDragEnded)
+		);
 
 	// grow block rect to its actual size
-	createCompletePromise = new Promise(resolve =>
+	return new Promise(resolve =>
 		newBlockRects.transition().duration(550).ease(d3.easeBounce)
 			.attr('y', block => getDayScale(block.dayIndex)(block.startTime))
 			.attr('height', block => {
@@ -444,28 +457,15 @@ function createBlockRects(blockRects) {
 			})
 			.on('end', () => resolve(blockRects))
 	);
-
-	// assign event handlers
-	newBlockRects
-		.on('click', timeBlockClicked)
-		.call(d3.drag()
-			.on('drag', timeBlockDragged)
-			.on('end', timeBlockDragEnded)
-		);
-
-	if (createCompletePromise === undefined)
-		createCompletePromise = Promise.resolve(blockRects);
-
-	return createCompletePromise;
 }
 
 function updateExistingBlockRects(blockRects) {
-	let updateCompletePromise;
+	let updateCompletePromise = Promise.resolve(blockRects);
 
 	blockRects.each(function(block) {
 		const scale = getDayScale(block.dayIndex);
 		const blockRect = d3.select(this);
-		const {startMoment, endMoment} = getRectBoundaryMoments(blockRect);
+		const { startMoment, endMoment } = getRectBoundaryMoments(blockRect);
 		block.rect = this; // sometimes you need to be told twice
 
 		// grow or shrink time block rect if it has been changed
@@ -485,15 +485,14 @@ function updateExistingBlockRects(blockRects) {
 		}
 	});
 
-	if (updateCompletePromise === undefined)
-		updateCompletePromise = Promise.resolve(blockRects);
-
 	return updateCompletePromise;
 }
 
 function removeBlockRects(blockRects) {
-	let blocksRemovedPromise;
+	if (blockRects.exit().empty())
+		return Promise.resolve(blockRects);
 
+	let blocksRemovedPromise;
 	blockRects.exit().each(function(block) {
 		blocksRemovedPromise = new Promise((resolve, reject) => {
 			const blockRect = d3.select(this);
@@ -513,15 +512,13 @@ function removeBlockRects(blockRects) {
 		});
 	});
 
-	if (blocksRemovedPromise === undefined)
-		blocksRemovedPromise = Promise.resolve(blockRects);
-
 	return blocksRemovedPromise;
 }
 
 /** Given a D3 selection of a rect positioned within a day square, its start and
  * end times are determined and returned as moment properties of an object. */
 export function getRectBoundaryMoments(blockRect) {
+	console.log('inner blockRect datum', blockRect.datum());
 	const scale = getDayScale(blockRect.datum().dayIndex);
 
 	// determine start time

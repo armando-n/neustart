@@ -1,5 +1,6 @@
 import 'babel-polyfill';
 import ajaxService from './ajax-service.es6.js';
+import * as svgService from './dashboard-svg-service.es6.js';
 import WeeklySchedule from './weekly-schedule-model.es6.js';
 import WeeklyTimeBlock from './weekly-timeblock-model.es6.js';
 
@@ -81,6 +82,9 @@ export function copy(blockToCopy, daysToCopyTo) {
 	return ajaxService.post('/weeklytimeblocks', operations)
 		.then(extractSchedule)
 		.then(setActiveWeeklySchedule)
+		.then(svgService.setWeeklyData)
+		.then(schedule => mergeIdenticalAdjacentBlocks(schedule, daysToCopyTo.map(day => day.index)))
+		.then(svgService.setWeeklyData)
 }
 
 export function mergeIdenticalAdjacentBlocks(schedule, dayIndexes) {
