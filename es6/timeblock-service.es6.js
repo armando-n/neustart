@@ -24,8 +24,11 @@ export function setActiveWeeklySchedule(weeklySchedule) {
 }
 
 export function add(timeBlock) {
+	// clone block to strip superfluous properties
+	const blockClone = timeBlock.clone();
+
 	// send add time block request to server
-	const timeBlockDataPromise = ajaxService.post('/weeklytimeblocks', timeBlock);
+	const timeBlockDataPromise = ajaxService.post('/weeklytimeblocks', blockClone);
 
 	// add time block returned in response to the weekly schedule in memory (it will have the blockID)
 	return timeBlockDataPromise
@@ -34,24 +37,22 @@ export function add(timeBlock) {
 }
 
 export function edit(timeBlock) {
+	// clone block to strip superfluous properties
+	const blockClone = timeBlock.clone();
+
 	// send edit time block request to server
-	const timeBlockDataPromise = ajaxService.put(`/weeklytimeblocks/${timeBlock.blockID}`, timeBlock);
+	const timeBlockDataPromise = ajaxService.put(`/weeklytimeblocks/${blockClone.blockID}`, blockClone);
 
 	// edit time block in the weekly schedule in memory
 	return timeBlockDataPromise
-		.then(() => getActiveWeeklySchedule().editBlock(timeBlock));
+		.then(() => getActiveWeeklySchedule().editBlock(blockClone));
 }
 
+/** Sends a delete time block request to the server, then deletes the block
+ * from memory and returns the modified schedule as a promise. */
 export function remove(timeBlock) {
-	// send delete request to server
-	ajaxService.remove(`/weeklytimeblocks/${timeBlock.blockID}`)
-		.catch(error => console.log(error));
-
-	// delete time block from memory
-	getActiveWeeklySchedule().removeBlock(timeBlock.blockID);
-
-	// return modified weekly schedule
-	return getActiveWeeklySchedule();
+	return ajaxService.remove(`/weeklytimeblocks/${timeBlock.blockID}`)
+		.then(() => getActiveWeeklySchedule().removeBlock(timeBlock.blockID));
 }
 
 export function copy(blockToCopy, daysToCopyTo) {

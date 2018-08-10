@@ -13,13 +13,14 @@ export function setCopyMode(enable = true) {
 		d3.selectAll('rect.time-block').interrupt();
 		svgService.showMessage('');
 		d3.selectAll('rect.day-select').remove();
-		d3.select('rect.time-block.selected').classed('selected', false);
+		d3.select('rect.time-block[data-selected]').attr('data-selected', null);
 		d3.selectAll('rect.time-block.no-hover').classed('no-hover', false);
 		d3.selectAll('rect.time-block.copy').remove();
 		d3.selectAll('g.day-square > .copy-tooltip').each(function() {
 			d3.select(this).selectAll('*').remove();
 			d3.select(this).remove();
 		});
+		d3.select('g.aboveground-canvas').raise();
 
 		// bind original time block data to the time block rects of each day
 		const blockRects = d3.selectAll('g.day-square')
@@ -42,6 +43,9 @@ export function setCopyMode(enable = true) {
 
 /** Creates selection rects above each day that animate on hover. */
 export function showDaySelectionSquares(...excludeDayIndexes) {
+	if (!d3.select('rect.day-select').empty())
+		return;
+
 	const dimensions = svgService.getDimensions();
 	toolbar.showPasteButtons();
 	svgService.showMessage('Select days to paste to');
@@ -77,17 +81,16 @@ export function completeCopyMode() {
 	// determine which days are selected for copying, as well as their overwrite flags
 	const daysToCopyTo = [];
 	d3.selectAll('g.day')
-		.filter(function() {
-			return !(d3.select(this).select('rect.time-block.copy').style('opacity', null).empty())
-		})
+		.filter(day => day.selected)
 		.each(function(day) {
+			d3.select(this).select('rect.time-block.copy').style('opacity', null);
 			const checkbox = d3.select(this).select('.tooltip-checkbox');
 			const overwrite = !checkbox.empty() && checkbox.node().hasAttribute('data-selected');
 			daysToCopyTo.push({ index: day.index, overwrite });
 		});
 
 	// perform the copy
-	const blockToCopy = d3.select('.time-block.selected').datum();
+	const blockToCopy = d3.select('.time-block[data-selected]').datum();
 	timeBlockService.copy(blockToCopy, daysToCopyTo)
 		.catch(error => console.log(error));
 
@@ -121,51 +124,6 @@ export function setOverwriteAll(overwriteAll = true) {
 	});
 }
 
-/** Checks the given svg checkbox and updates the schedule view. */
-function checkOverwriteBox(copyRectNode, checkbox, checkmark, targetDay) {
-	// check the checkbox
-	checkbox.attr('data-selected', '');
-	checkmark.transition().duration(200).ease(d3.easeLinear)
-		.attr('stroke-dashoffset', 0);
-
-	// modify and animate time block rects to with-overwrite results
-
-	// bind time block data to the time block rects of the target day
-	const { schedule, createdBlocks } = targetDay.copyWithOverwrite;
-	const blockRects = d3.selectAll('g.day-square')
-		.filter(day => day.index === targetDay.index)
-		.selectAll('rect.time-block')
-		.data(schedule.daysWithTimeBlocks[targetDay.index].values, block => block.blockID);
-
-	d3.select(copyRectNode).datum(createdBlocks[createdBlocks.length - 1]);
-
-	// ceate/update/delete time block rects
-	svgService.updateScheduleView(blockRects);
-}
-
-/** Unchecks the given svg checkbox and moves into the foreground any
- * time block rects that conflict with the given copyRect. */
-function uncheckOverwriteBox(copyRectNode, checkbox, checkmark, targetDay) {
-	// uncheck the checkbox
-	checkbox.attr('data-selected', null);
-	checkmark.transition().duration(200).ease(d3.easeLinear)
-		.attr('stroke-dashoffset', checkmark.node().getTotalLength());
-
-	// modify and animate time block rects to no-overwrite results
-
-	// bind time block data to the time block rects of the target day
-	const { schedule, createdBlocks } = targetDay.copyNoOverwrite;
-	const blockRects = d3.selectAll('g.day-square')
-		.filter(day => day.index === targetDay.index)
-		.selectAll('rect.time-block')
-		.data(schedule.daysWithTimeBlocks[targetDay.index].values, block => block.blockID);
-
-	d3.select(copyRectNode).datum(createdBlocks[createdBlocks.length - 1]);
-
-	// ceate/update/delete time block rects
-	svgService.updateScheduleView(blockRects);
-}
-
 /** Determines which time blocks in the active schedule conflict with
  * the time block represented by the rect svg argument, if any. */
 function getConflictingBlocks(timeBlockRect) {
@@ -185,15 +143,15 @@ function daySelectSquareClicked(targetDay) {
 		d3.select(this).attr('fill-opacity', 0.1);
 
 		// create new rect on top of selected time block
-		const sourceBlockRect = d3.select('rect.time-block.selected');
+		const sourceBlockRect = d3.select('rect.time-block[data-selected]');
 		const sourceBlock = sourceBlockRect.datum();
 		const targetDaySquare = d3.select(this.parentNode);
 		const daysAway = sourceBlock.dayIndex - targetDay.index;
 		const copyRectNode = sourceBlockRect.node().cloneNode(true);
 		d3.select(copyRectNode).datum({ dayIndex: targetDay.index });
 		d3.select(copyRectNode)
-			.classed('selected', false)
 			.classed('copy', true)
+			.attr('data-selected', null)
 			.attr('x', daysAway * dimensions.dayWidth);
 
 		// add new rect to target day square and animate it to move to that day
@@ -263,6 +221,7 @@ function daySelectSquareMouseOver(day) {
 	const strokeColor = day.selected ? '#f185a8' : '#57e057';
 
 	d3.select(this.parentNode.parentNode).raise();
+	d3.select('.aboveground-canvas').raise();
 	d3.select(this)
 		.attr('stroke', strokeColor)
 		.attr('stroke-width', 3);
@@ -302,20 +261,33 @@ function overwriteCheckboxClicked() {
 	const checkbox = tooltipG.select('.tooltip-checkbox');
 	const checkmark = tooltipG.select('.tooltip-checkmark');
 	const copyRectNode = d3.select(this.parentNode).select('.copy').node();
-	const day = d3.select(this.parentNode).datum();
+	const targetDay = d3.select(this.parentNode).datum();
+	const isChecked = checkbox.node().hasAttribute('data-selected');
 
-	if (checkbox.node().hasAttribute('data-selected')) {
-		uncheckOverwriteBox(copyRectNode, checkbox, checkmark, day);
-	} else {
-		checkOverwriteBox(copyRectNode, checkbox, checkmark, day);
-	}
+	// set checkbox status and show/hide the check mark
+	checkbox.attr('data-selected', isChecked ? null : '');
+	checkmark.transition().duration(200).ease(d3.easeLinear)
+		.attr('stroke-dashoffset', isChecked ? checkmark.node().getTotalLength() : 0);
+
+	// modify and animate time block rects to copy results
+
+	// bind time block data to the time block rects of the target day
+	const { schedule, createdBlocks } = isChecked ? targetDay.copyNoOverwrite : targetDay.copyWithOverwrite;
+	const targetDayBlockRects = d3.selectAll('g.day-square')
+		.filter(day => day.index === targetDay.index)
+		.selectAll('rect.time-block')
+		.data(schedule.daysWithTimeBlocks[targetDay.index].values, block => block.blockID);
+		// TODO something not workin here
+
+	if (createdBlocks.length - 1 >= 0)
+		d3.select(copyRectNode).datum(createdBlocks[createdBlocks.length - 1]);
+
+	// ceate/update/delete time block rects
+	svgService.updateScheduleView(targetDayBlockRects);
 }
 
 /** Triggers when a new copy rect has finished moving to its target day (on animation end). */
 function showOverwriteCheckbox() {
-	if (svgService.getMode() !== 'copy')
-		return;
-
 	const copyRect = d3.select(this).raise();
 	const conflictBlocks = getConflictingBlocks(copyRect);
 	if (conflictBlocks.length === 0)

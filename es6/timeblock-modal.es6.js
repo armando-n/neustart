@@ -2,12 +2,12 @@ import 'babel-polyfill';
 import { zPad } from './utils.es6.js';
 import * as timeBlockService from './timeblock-service.es6.js';
 import WeeklyTimeBlock from './weekly-timeblock-model.es6.js';
+import Mode from './mode';
 
 window.addEventListener('load', init);
 
 let successAction;
 let cancelAction;
-let mode; // 'add' | 'edit'
 
 function init() {
 	// bind event handlers
@@ -16,19 +16,16 @@ function init() {
 	document.getElementById('calls-button').onclick = callsToggled;
 	document.getElementById('calls-repeat-button').onclick = callsRepeatToggled;
 	document.getElementById('close-modal').onclick = cancelClicked;
-	document.querySelector('#modal-buttons > input[type="button"]').onclick = cancelClicked;
-	document.querySelector('#modal-buttons > input[type="submit"]').onclick = submitClicked;
+	// document.querySelector('#modal-buttons > input[type="button"]').onclick = cancelClicked;
+	// document.querySelector('#modal-buttons > input[type="submit"]').onclick = submitClicked;
 	document.querySelectorAll('input[type="number"]').forEach(input =>
 		input.onfocus = (event) => event.target.select()
 	);
-
-	if (window.innerWidth < 576)
-		document.getElementById('comment').cols = 18;
 }
 
 /** Loads and displays the time block parameter's data in a modal dialog */
 export function show(block, addOrEdit = 'edit', onSubmitSuccess, onCancel) {
-	mode = addOrEdit;
+	Mode.set(addOrEdit);
 	successAction = onSubmitSuccess;
 	cancelAction = onCancel;
 	document.querySelector('#block-detail-modal .modal-title')
@@ -43,7 +40,7 @@ export function show(block, addOrEdit = 'edit', onSubmitSuccess, onCancel) {
 	document.getElementById('endTime').value = zPad(block.endHour)+':'+zPad(block.endMinute);
 	document.getElementById('repeatTextDuration').value = block.repeatTextDuration;
 	document.getElementById('repeatCallDuration').value = block.repeatCallDuration;
-	document.getElementById('comment').value = block.comment || '';
+	document.getElementById('note').value = block.comment || '';
 	document.getElementById('blockID').value = block.blockID || '';
 	document.getElementById('dayOfWeek').value = block.dayOfWeek;
 
@@ -115,7 +112,7 @@ function getModal() {
 function submitClicked(event) {
 	event.preventDefault();
 	const timeBlock = getFormTimeBlock();
-	if (mode === 'edit')
+	if (Mode.get() === 'edit')
 		timeBlockService.edit(timeBlock).then(() => {
 			closeModal();
 			successAction();

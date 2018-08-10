@@ -50,6 +50,22 @@ class WeeklyTimeBlock {
 		this.repeatCallDuration = repeatCallDuration;
 	}
 
+	setTime(startTime, endTime) {
+		if (!(startTime instanceof Date) || !(endTime instanceof Date))
+			throw new Error('Invalid moment passed to WeeklyTimeBlock.setTime');
+		this.startTime = startTime;
+		this.endTime = endTime;
+		return this;
+	}
+
+	setMoments(startMoment, endMoment) {
+		if (!moment.isMoment(startMoment) || !moment.isMoment(endMoment))
+			throw new Error('Invalid moment passed to WeeklyTimeBlock.setMoments');
+		this.startMoment = startMoment;
+		this.endMoment = endMoment;
+		return this;
+	}
+
 	copy(dayIndex) {
 		const blockCopy = new WeeklyTimeBlock(this);
 
@@ -112,6 +128,10 @@ class WeeklyTimeBlock {
 		this.dayOfWeek = WeeklyTimeBlock.days[+dayIndex];
 	}
 
+	get duration() {
+		return moment.duration(this.endMoment.diff(this.startMoment));
+	}
+
 	get startTime() {
 		return new Date(this.startMoment.toDate().valueOf());
 	}
@@ -149,6 +169,20 @@ class WeeklyTimeBlock {
 			throw new Error('Invalid moment passed to WeeklyTimeBlock.endMoment');
 		this.endHour = endMoment.hour();
 		this.endMinute = endMoment.minute();
+	}
+
+	set startTime(startTime) {
+		if (!(startTime instanceof Date))
+			throw new Error('Invalid moment passed to WeeklyTimeBlock.startTime');
+		this.startHour = startTime.getHours();
+		this.startMinute = startTime.getMinutes();
+	}
+
+	set endTime(endTime) {
+		if (!(endTime instanceof Date))
+			throw new Error('Invalid moment passed to WeeklyTimeBlock.endTime');
+		this.endHour = endTime.getHours();
+		this.endMinute = endTime.getMinutes();
 	}
 
 	get type() {

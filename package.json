@@ -1,6 +1,9 @@
 {
 	"name": "neustart-contested",
 	"version": "0.0.1",
+	"scripts": {
+		"start": "sass sass/dashboard.scss css/dashboard.css && npx webpack --mode=development"
+	},
 	"dependencies": {
 		"babel-polyfill": "^6.26.0",
 		"d3": "^4.13.0",

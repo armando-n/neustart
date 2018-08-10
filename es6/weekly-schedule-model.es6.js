@@ -52,7 +52,7 @@ export class WeeklySchedule {
 
 		// fill in any missing day objects and add index property to each day
 		const allDays = WeeklySchedule.days.map((dayOfWeek, dayIndex) =>
-			(daysWithTimeBlocks[0].key === dayOfWeek)
+			(daysWithTimeBlocks[0] && daysWithTimeBlocks[0].key === dayOfWeek)
 			? Object.assign(daysWithTimeBlocks.shift(), { index: dayIndex })
 			: { key: dayOfWeek, values: [], index: dayIndex }
 		)
@@ -81,12 +81,13 @@ export class WeeklySchedule {
 
 		Object.assign(this.daysWithTimeBlocks[dayIndex].values[blockIndex], weeklyTimeBlock);
 
-		this.daysWithTimeBlocks[dayIndex].values[blockIndex];
+		return this.daysWithTimeBlocks[dayIndex].values[blockIndex];
 	}
 
 	removeBlock(blockID) {
 		const [dayIndex, blockIndex] = getDayAndBlockIndexes.call(this, blockID);
 		this.daysWithTimeBlocks[dayIndex].values.splice(blockIndex, 1);
+		return this;
 	}
 
 	getBlock(blockID) {
@@ -275,18 +276,33 @@ export class WeeklySchedule {
 	/** Returns top & bottom boundaries (as moments) for the time block with the given ID.
 	 * These boundaries indicate the extent to which the time block can grow
 	 * before running either into another time block, or running off the day. */
-	findGrowthBoundaries(blockID) {
-		const [dayIndex, blockIndex] = getDayAndBlockIndexes.call(this, blockID);
-		const timeBlocks = this.daysWithTimeBlocks[dayIndex].values;
+	findGrowthBoundaries(blockOrblockID) {
+		let topBoundaryMoment, bottomBoundaryMoment;
 
-		let topBoundaryTime = moment().day(dayIndex).startOf('day');
-		let bottomBoundaryTime = moment().day(dayIndex).endOf('day');
-		if (blockIndex > 0)
-			topBoundaryTime = timeBlocks[blockIndex-1].endMoment;
-		if (blockIndex < timeBlocks.length-1)
-			bottomBoundaryTime = timeBlocks[blockIndex+1].startMoment;
+		if (blockOrblockID instanceof WeeklyTimeBlock) {
+			const { previousBlock, nextBlock } = getAdjacentBlocks.call(this, blockOrblockID);
+			topBoundaryMoment = moment().day(blockOrblockID.dayIndex).startOf('day');
+			bottomBoundaryMoment = moment().day(blockOrblockID.dayIndex).endOf('day');
 
-		return [topBoundaryTime, bottomBoundaryTime];
+			if (previousBlock)
+				topBoundaryMoment = previousBlock.endMoment;
+			if (nextBlock)
+				bottomBoundaryMoment = nextBlock.startMoment;
+		}
+
+		else {
+			const [ dayIndex, blockIndex ] = getDayAndBlockIndexes.call(this, blockOrblockID);
+			const timeBlocks = this.daysWithTimeBlocks[dayIndex].values;
+			topBoundaryMoment = moment().day(dayIndex).startOf('day');
+			bottomBoundaryMoment = moment().day(dayIndex).endOf('day');
+
+			if (blockIndex > 0)
+				topBoundaryMoment = timeBlocks[blockIndex-1].endMoment;
+			if (blockIndex < timeBlocks.length-1)
+				bottomBoundaryMoment = timeBlocks[blockIndex+1].startMoment;
+		}
+
+		return [ topBoundaryMoment, bottomBoundaryMoment ];
 	}
 
 	/** Given a time that does not lie within any time block, this will return
@@ -417,9 +433,51 @@ function getDayAndBlockIndexes(blockID) {
 	}
 
 	if (targetDayIndex === -1 || targetBlockIndex === -1)
-		throw new Error('Invalid block ID given to WeeklySchedule.removeBlock');
+		throw new Error('Invalid block ID given to WeeklySchedule.getDayAndBlockIndexes');
 
 	return [targetDayIndex, targetBlockIndex];
+}
+
+function getAdjacentBlocks(block) {
+	let previousBlock, currentBlock, nextBlock;
+	const dayOfBlock = this.daysWithTimeBlocks[block.dayIndex];
+
+	// go through each block of the day
+	for (let i = 0; i < dayOfBlock.values.length; i++) {
+		previousBlock = currentBlock;
+		currentBlock = dayOfBlock.values[i];
+		nextBlock = dayOfBlock.values[i+1];
+		if (currentBlock.startMoment.isSame(block.startMoment, 'minute') && currentBlock.endMoment.isSame(block.endMoment, 'minute'))
+			break;
+
+		let isPrevBlockBefore, isNextBlockAfter;
+		if (previousBlock)
+			isPrevBlockBefore = previousBlock.endMoment.isBefore(block.startMoment, 'minute');
+		if (nextBlock)
+			isNextBlockAfter = nextBlock.startMoment.isAfter(block.endMoment, 'minute');
+		if (currentBlock.startMoment.isAfter(block.endMoment, 'minute')) {
+			nextBlock = currentBlock;
+			break;
+		} else if (currentBlock.endMoment.isBefore(block.startMoment, 'minute') && (!nextBlock || nextBlock.startMoment.isAfter(block.endMoment, 'minute'))) {
+			previousBlock = currentBlock;
+			break;
+		}
+
+		if (previousBlock && nextBlock && isPrevBlockBefore && isNextBlockAfter)
+			break;
+		else if (nextBlock && isNextBlockAfter)
+			break;
+		else if (previousBlock && isPrevBlockBefore)
+			break;
+		else if (currentBlock && !previousBlock && !nextBlock) {
+			if (currentBlock.endMoment.isBefore(block.startMoment, 'minute'))
+				previousBlock = currentBlock;
+			else if (currentBlock.startMoment.isAfter(block.endMoment, 'minute'))
+				nextBlock = currentBlock;
+		}
+	}
+
+	return { previousBlock, nextBlock }
 }
 
 function validateBlock(rawBlock, ignoreDayOfWeek = false) {

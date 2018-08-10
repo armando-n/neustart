@@ -7,15 +7,36 @@ import WeeklySchedule from './weekly-schedule-model.es6.js';
 import { toNum, to12Hours, zPad, timeout } from './utils.es6.js';
 import WeeklyTimeBlock from './weekly-timeblock-model.es6.js';
 import * as copyMode from './copy-mode.es6.js';
+import IconLoader from './icon-loader.es6.js';
+import Mode from './mode';
+import { BLOCK_COLOR_CLASSES } from './constants.js';
 
-let mode = '';
+init();
+
+function init() {
+	const modalSaveButtons = d3.selectAll('.modal-buttons button[type=submit]').each(function () {
+		IconLoader.createSaveIcon(this, undefined, undefined, undefined, true, -6, 1)
+	});
+	const modalCancelButtons = d3.selectAll('.modal-buttons button[type=button]')
+		.filter(function() { // the confirm modal handles its own icons. skip it.
+			return !this.closest('#confirm-modal')
+		})
+		.each(function () {
+			IconLoader.createForbiddenIcon(this, 10, 10, '#ff0000', true, -6, 0)
+		});
+
+	document.querySelector('#block-time-modal button[type=submit]').onclick = saveTimeClick;
+	document.querySelector('#block-time-modal button[type=button]').onclick = cancelTimeClick;
+	document.querySelector('#block-note-modal button[type=submit]').onclick = saveNoteClicked;
+	document.querySelector('#block-note-modal button[type=button]').onclick = cancelNoteClicked;
+}
 
 export function getMode() {
-	return mode;
+	return Mode.get();
 }
 
 export function setMode(newMode) {
-	mode = newMode;
+	Mode.set(newMode);
 }
 
 export function createSvg(weeklySchedule) {
@@ -141,15 +162,248 @@ export function createSvg(weeklySchedule) {
 		.attr('y', 0)
 		.attr('width', dimensions.dayWidth)
 		.attr('height', dimensions.dayHeight);
+
+	// above-ground canvas
+	const abovegroundCanvas = canvas.append('g')
+		.attr('class', 'aboveground-canvas')
+		.attr('transform', `translate(0, ${dimensions.marginTop})`);
+
+	// horizontal mouseover line and text for empty spaces
+	const trackLineAbove = abovegroundCanvas.append('line')
+		.attr('id', 'track-line-above-top')
+		.attr('x1', 0).attr('y1', 0)
+		.attr('x2', dimensions.canvasWidth).attr('y2', 0)
+		.attr('display', 'none');
+	const trackLineBottomAbove = abovegroundCanvas.append('line')
+		.attr('id', 'track-line-above-bottom')
+		.attr('x1', 0).attr('y1', 0)
+		.attr('x2', dimensions.canvasWidth).attr('y2', 0)
+		.attr('display', 'none');
+	const trackTextAboveG = abovegroundCanvas.append('g')
+		.attr('class', 'start-time overlay-time')
+		.style('cursor', 'pointer')
+		.on('mouseover', addHoverClass)
+		.on('mouseout', removeHoverClass)
+		.on('click', timeClick);
+	const trackTextBorderAbove = trackTextAboveG.append('rect')
+		.attr('id', 'track-text-above-border-top')
+		.attr('class', 'tooltip-border')
+		.attr('x', 0).attr('y', 0)
+		.attr('width', 0).attr('height', 0)
+		.attr('display', 'none');
+	const trackTextAbove = trackTextAboveG.append('text')
+		.attr('id', 'track-text-above-top')
+		.attr('class', 'tooltip-text')
+		.attr('x', 0)
+		.attr('y', 0)
+		.attr('text-anchor', 'middle')
+		.attr('display', 'none');
+	const trackTextBelowG = abovegroundCanvas.append('g')
+		.attr('class', 'end-time overlay-time')
+		.style('cursor', 'pointer')
+		.on('mouseover', addHoverClass)
+		.on('mouseout', removeHoverClass)
+		.on('click', timeClick);
+	const trackTextBorderBottomAbove = trackTextBelowG.append('rect')
+		.attr('id', 'track-text-above-border-bottom')
+		.attr('class', 'tooltip-border')
+		.attr('x', 0).attr('y', 0)
+		.attr('width', 0).attr('height', 0)
+		.attr('display', 'none');
+	const trackTextBottomAbove = trackTextBelowG.append('text')
+		.attr('id', 'track-text-above-bottom')
+		.attr('class', 'tooltip-text')
+		.attr('x', 0)
+		.attr('y', 0)
+		.attr('text-anchor', 'middle')
+		.attr('display', 'none');
+
+	// create call/text/repeat tooltip icons
+	const callIconG = abovegroundCanvas.append('g')
+		.attr('id', 'call-icon')
+		.attr('class', 'overlay-button')
+		.style('cursor', 'pointer')
+		.attr('display', 'none')
+		.on('click', callIconClicked);
+	callIconG.append('rect')
+		.attr('width', 20)
+		.attr('height', 20)
+		.attr('rx', 4)
+		.attr('ry', 4)
+	const textIconG = abovegroundCanvas.append('g')
+		.attr('id', 'text-icon')
+		.attr('class', 'overlay-button')
+		.style('cursor', 'pointer')
+		.attr('display', 'none')
+		.on('click', textIconClicked);
+	textIconG.append('rect')
+		.attr('width', 20)
+		.attr('height', 20)
+		.attr('rx', 4)
+		.attr('ry', 4)
+	const repeatCallIconG = abovegroundCanvas.append('g')
+		.attr('id', 'repeat-call-icon')
+		.attr('class', 'overlay-button')
+		.style('cursor', 'pointer')
+		.attr('display', 'none')
+		.on('click', repeatCallIconClicked);
+	repeatCallIconG.append('rect')
+		.attr('width', 20)
+		.attr('height', 20)
+		.attr('rx', 4)
+		.attr('ry', 4);
+	const repeatTextIconG = abovegroundCanvas.append('g')
+		.attr('id', 'repeat-text-icon')
+		.attr('class', 'overlay-button')
+		.style('cursor', 'pointer')
+		.attr('display', 'none')
+		.on('click', repeatTextIconClicked);
+	repeatTextIconG.append('rect')
+		.attr('width', 20)
+		.attr('height', 20)
+		.attr('rx', 4)
+		.attr('ry', 4);
+	const closeIconG = abovegroundCanvas.append('g')
+		.attr('id', 'close-block-overlay-icon')
+		.attr('class', 'overlay-button')
+		.attr('display', 'none')
+		.style('cursor', 'pointer')
+		.on('mouseover', addHoverClass)
+		.on('mouseout', removeHoverClass)
+		.on('click', closeOverlayIconClicked);
+	closeIconG.append('rect')
+		.attr('width', 10)
+		.attr('height', 10)
+		.attr('rx', 2)
+		.attr('ry', 2)
+		.style('stroke-width', 1);
+	const noteIconG = abovegroundCanvas.append('g')
+		.attr('id', 'note-icon')
+		.attr('class', 'svg-icon-button overlay-button')
+		.attr('display', 'none')
+		.style('cursor', 'pointer')
+		.on('mouseover', addHoverClass)
+		.on('mouseout', removeHoverClass)
+		.on('click', noteIconClicked);
+	noteIconG.append('rect')
+		.attr('width', 20)
+		.attr('height', 20)
+		.attr('rx', 2)
+		.attr('ry', 2);
+	const noteContentG = abovegroundCanvas.append('g')
+		.attr('id', 'note-content')
+		.attr('class', 'svg-icon-button overlay-button')
+		.attr('display', 'none')
+		.style('cursor', 'pointer')
+		.on('mouseover', addHoverClass)
+		.on('mouseout', removeHoverClass)
+		.on('click', noteIconClicked);
+	noteContentG.append('rect')
+		.attr('width', dimensions.dayWidth)
+		.attr('height', 16)
+		.attr('rx', 2)
+		.attr('ry', 2);
+	noteContentG.append('text')
+		.attr('id', 'note-content-text')
+		.attr('text-anchor', 'start')
+		.attr('x', 2).attr('y', 12);
+	const deleteIconG = abovegroundCanvas.append('g')
+		.attr('id', 'delete-icon')
+		.attr('class', 'svg-icon-button overlay-button')
+		.attr('display', 'none')
+		.style('cursor', 'pointer')
+		.on('mouseover', addHoverClass)
+		.on('mouseout', removeHoverClass)
+		.on('click', deleteIconClicked);
+	deleteIconG.append('rect')
+		.attr('class', 'delete')
+		.attr('width', 20)
+		.attr('height', 20)
+		.attr('rx', 2)
+		.attr('ry', 2);
+	const copyIconG = abovegroundCanvas.append('g')
+		.attr('id', 'copy-icon')
+		.attr('class', 'svg-icon-button overlay-button')
+		.attr('display', 'none')
+		.style('cursor', 'pointer')
+		.on('mouseover', addHoverClass)
+		.on('mouseout', removeHoverClass)
+		.on('click', copyIconClicked);
+	copyIconG.append('rect')
+		.attr('width', 20)
+		.attr('height', 20)
+		.attr('rx', 2)
+		.attr('ry', 2);
+	const moveIconG = undergroundCanvas.append('g')
+		.attr('id', 'move-icon')
+		.attr('class', 'svg-icon-button overlay-button')
+		.attr('display', 'none');
+	const resizeTopRectG = abovegroundCanvas.append('g')
+		.attr('id', 'resize-top')
+		.attr('class', 'svg-icon-button overlay-button')
+		.attr('display', 'none')
+		.style('cursor', 'pointer')
+		.on('dblclick', timeBlockStretch)
+		.call(d3.drag()
+			.on('drag', timeBlockResized)
+			.on('end', timeBlockResizeEnded)
+		);
+	resizeTopRectG.append('rect')
+		.attr('width', 24)
+		.attr('height', 4)
+		.attr('x', 0)
+		.attr('y', 0)
+		.style('cursor', 'ns-resize');
+	const resizeBottomRectG = abovegroundCanvas.append('g')
+		.attr('id', 'resize-bottom')
+		.attr('class', 'svg-icon-button overlay-button')
+		.attr('display', 'none')
+		.style('cursor', 'pointer')
+		.on('dblclick', timeBlockStretch)
+		.call(d3.drag()
+			.on('drag', timeBlockResized)
+			.on('end', timeBlockResizeEnded)
+		);
+	resizeBottomRectG.append('rect')
+		.attr('width', 24)
+		.attr('height', 4)
+		.attr('x', 0)
+		.attr('y', 0)
+		.style('cursor', 'ns-resize');
+	const saveIconG = abovegroundCanvas.append('g')
+		.attr('id', 'save-icon')
+		.attr('class', 'svg-icon-button overlay-button')
+		.attr('display', 'none')
+		.style('cursor', 'pointer')
+		.on('mouseover', addHoverClass)
+		.on('mouseout', removeHoverClass)
+		.on('click', saveIconClicked);
+	saveIconG.append('rect')
+		.attr('class', 'save')
+		.attr('width', 20)
+		.attr('height', 20)
+		.attr('rx', 2)
+		.attr('ry', 2);
+
+	IconLoader.createCallIcon(callIconG.node());
+	IconLoader.createTextIcon(textIconG.node());
+	IconLoader.createRepeatIcon(repeatCallIconG.node());
+	IconLoader.createRepeatIcon(repeatTextIconG.node());
+	IconLoader.createCloseIcon(closeIconG.node());
+	IconLoader.createNoteIcon(noteIconG.node());
+	IconLoader.createDeleteIcon(deleteIconG.node());
+	IconLoader.createCopyIcon(copyIconG.node());
+	IconLoader.createMoveVerticalAlternateIcon(moveIconG.node());
+	IconLoader.createSaveIcon(saveIconG.node(), 14, 14, null, false, 3, 3);
 }
 
 export function setDeleteMode(enable = true) {
-	mode = enable ? 'delete' : '';
+	Mode.set(enable ? 'delete' : '');
 	d3.selectAll('rect.time-block').classed('delete-mode', enable);
 }
 
 export function setFillMode(enable = true) {
-	mode = enable ? 'fill' : '';
+	Mode.set(enable ? 'fill' : '');
 
 	if (enable) {
 
@@ -234,19 +488,6 @@ function animateDashes(datum) {
 	}
 }
 
-function createBlockFromNewRect(svgElement) {
-	const snapTo = getSnapTo(svgElement);
-	const newRectTopY = d3.select('.time-block-new').attr('y');
-	const startTime = snapTo.scale.invert(newRectTopY);
-	return new WeeklyTimeBlock({
-		dayOfWeek: WeeklySchedule.days[snapTo.day],
-		startHour: startTime.getHours(),
-		startMinute: startTime.getMinutes(),
-		endHour: snapTo.hours24,
-		endMinute: snapTo.minutes
-	});
-}
-
 function showAddBlockModal(newTimeBlock) {
 	timeBlockModal.show(
 		newTimeBlock,
@@ -311,7 +552,7 @@ export function updateScheduleView(blockRects, weeklySchedule = {}) {
 
 /** Determine the coordinates, x-scale day value, and y-scale time-value of the location to snap to */
 function getSnapTo(svgElement) {
-	const [mouseX, mouseY] = d3.mouse(svgElement);
+	const [ mouseX, mouseY ] = d3.mouse(svgElement);
 
 	// determine day of week
 	const dimensions = getDimensions();
@@ -321,45 +562,47 @@ function getSnapTo(svgElement) {
 			break;
 	}
 	if (dayIndex > 6)
-		throw new Error('Day not found in SvgService.getMouseDay');
+		throw new Error('Day not found in SvgService.getSnapTo');
 
 	// create scale
 	const scale = d3.scaleTime()
-		.domain([moment().startOf('day').toDate(), moment().endOf('day').toDate()])
+		.domain([ moment().startOf('day').toDate(), moment().endOf('day').toDate() ])
 		.range([0, getDimensions().dayHeight]);
 
 	// calculate remaining values
-	const mouseTime = moment(scale.invert(mouseY));
-	const [hours24, minutes] = [ mouseTime.hours(), mouseTime.minutes() ];
-	const [snapToHours24, snapToMinutes] = findClosest30Mins(hours24, minutes);
-	const [snapToHours12, meridiem] = to12Hours(snapToHours24);
-	const snapToTime = moment().hours(snapToHours24).minutes(snapToMinutes).toDate();
+	const mouseTime = scale.invert(mouseY);
+	const snapToTime = findClosest30Mins(mouseTime).toDate();
+	const [ snapToHours12, meridiem ] = to12Hours(snapToTime.getHours());
 	const snapToY = scale(snapToTime);
 
 	// find the boundaries' time-values for this empty space
 	const [topBoundaryTime, bottomBoundaryTime] = timeBlockService.getActiveWeeklySchedule().findEmptyBoundaries(snapToTime, dayIndex);
 
-	return { x: mouseX, y: snapToY, day: dayIndex, hours12: snapToHours12, hours24: snapToHours24, minutes: snapToMinutes, meridiem, topBoundaryTime, bottomBoundaryTime, scale };
+	return { x: mouseX, y: snapToY, day: dayIndex, hours12: snapToHours12, hours24: snapToTime.getHours(), minutes: snapToTime.getMinutes(), meridiem, topBoundaryTime, bottomBoundaryTime, scale };
 }
 
-function findClosest30Mins(hours24, minutes) {
-	let resultHours = hours24;
-	let resultMinutes = 0;
+function findClosest30Mins(time) {
+	if (!(time instanceof Date) && !(time instanceof moment))
+		return;
 
-	if (minutes >= 15 && minutes < 45)
-		resultMinutes = 30;
-	else if (minutes >= 45)
-		resultHours++;
+	const origMoment = moment(time);
 
-	return [resultHours, resultMinutes];
+	if (origMoment.minutes() < 15)
+		return origMoment.clone().minutes(0).seconds(0);
+
+	if (origMoment.minutes() >= 15 && origMoment.minutes() < 45)
+		return origMoment.clone().minutes(30).seconds(0);
+
+	// origMoment.minutes() >= 45
+	return origMoment.clone().minutes(0).seconds(0).add(1, 'hour');
 };
 
 export function getDimensions() {
 	const colPadding = 15;
-	const marginTop = 30;
+	const marginTop = 55;
 	const marginLeft = 45;
 	const marginRight= 45;
-	const marginBottom = 30;
+	const marginBottom = 50;
 
 	const clientWidth = window.innerWidth;
 	const svgWidth = clientWidth - colPadding*2;
@@ -401,16 +644,23 @@ export function getDayScale(dayIndex) {
 
 function getSquareForDay(dayIndex) {
 	let targetDaySquare;
-	d3.selectAll('g.day-square').each(function(day, index) {
-		if (index === dayIndex) {
+	d3.selectAll('g.day-square')
+		.filter(day => day.index === dayIndex)
+		.each(function() {
 			targetDaySquare = d3.select(this);
-		}
-	});
+		});
 	return targetDaySquare;
 }
 
+function updateColorClass(blockRect) {
+	const colorClass = timeBlockColorClass(blockRect.datum());
+	BLOCK_COLOR_CLASSES
+		.filter(className => className !== colorClass)
+		.forEach(className => blockRect.classed(className, false));
+	blockRect.classed(colorClass, true);
+}
+
 function timeBlockColorClass(timeBlock) {
-console.log('timeBlock', timeBlock);
 	if (!timeBlock)
 		return '';
 
@@ -423,7 +673,6 @@ console.log('timeBlock', timeBlock);
 
 /** create needed new block rects */
 function createBlockRects(blockRects) {
-	console.log('createBlockRects.blockRects', blockRects);
 	const newBlockRects = blockRects.enter().filter(block => block.startHour !== undefined).append('rect');
 	if (newBlockRects.empty())
 		return Promise.resolve(blockRects);
@@ -432,16 +681,13 @@ function createBlockRects(blockRects) {
 	newBlockRects
 		.attr('class', block => 'time-block ' + timeBlockColorClass(block))
 		.attr('x', 0)
-		.attr('y', block => {
-			const scale = getDayScale(block.dayIndex);
-			return scale(block.midTime);
-		})
-		.attr('rx', 8)
-		.attr('ry', 8)
+		.attr('y', block => getDayScale(block.dayIndex)(block.midTime))
 		.attr('width', getDimensions().dayWidth)
 		.attr('height', 0)
 		.each(function(block) { block.rect = this })
 		.on('click', timeBlockClicked)
+		.on('mouseover', timeBlockEnter)
+		.on('mouseout', timeBlockLeave)
 		.call(d3.drag()
 			.on('drag', timeBlockDragged)
 			.on('end', timeBlockDragEnded)
@@ -471,7 +717,7 @@ function updateExistingBlockRects(blockRects) {
 		// grow or shrink time block rect if it has been changed
 		if (!startMoment.isSame(block.startMoment, 'minute') || !endMoment.isSame(block.endMoment, 'minute')) {
 			updateCompletePromise = new Promise(resolve =>
-				blockRect.transition().duration(650).ease(d3.easeSin)
+				blockRect.transition().duration(450).ease(d3.easeSin)
 					.attr('y', block => scale(block.startTime))
 					.attr('height', block => scale(block.endTime) - scale(block.startTime))
 					.on('end', () => resolve(blockRects))
@@ -504,7 +750,7 @@ function removeBlockRects(blockRects) {
 				.style('opacity', 0.0)
 				.on('end', () => resolve(blockRects))
 				.remove();
-			
+
 			timeout(0).then(turnRed)
 				.then(flashOnce)
 				.then(flashOnce)
@@ -518,7 +764,6 @@ function removeBlockRects(blockRects) {
 /** Given a D3 selection of a rect positioned within a day square, its start and
  * end times are determined and returned as moment properties of an object. */
 export function getRectBoundaryMoments(blockRect) {
-	console.log('inner blockRect datum', blockRect.datum());
 	const scale = getDayScale(blockRect.datum().dayIndex);
 
 	// determine start time
@@ -532,20 +777,134 @@ export function getRectBoundaryMoments(blockRect) {
 	return { startMoment, endMoment };
 }
 
+function showBlockOverlay(block, verbose = false) {
+	if (!(block instanceof WeeklyTimeBlock))
+		return;
+
+	const scale = getDayScale(block.dayIndex);
+	const topLineY = scale(block.startTime);
+	const bottomLineY = scale(block.endTime);
+	const dimensions = getDimensions();
+	const textX = dimensions.dayWidth * (block.dayIndex + 0.5);
+	const topTextY = topLineY - 11;
+	const bottomTextY = bottomLineY + 20;
+	const topLineText = block.startMoment.format('h:mm a');
+	const bottomLineText = block.endMoment.format('h:mm a');
+
+	setTimeout(() => Hover.showTopLine(topLineY, textX, topTextY, topLineText, false, true), 25);
+	setTimeout(() => Hover.showBottomLine(bottomLineY, textX, bottomTextY, bottomLineText, false, true), 25);
+
+	// calculate positioning coordinates
+	const dayX = block.dayIndex * dimensions.dayWidth;
+	const nextDayX = (block.dayIndex + 1) * dimensions.dayWidth;
+	const midDayX = dayX + (nextDayX - dayX)/2;
+	const midDayY = scale(block.midTime);
+	const firstQuarterX = dayX + dimensions.dayWidth/4;
+	const lastQuarterX = dayX + dimensions.dayWidth*3/4;
+
+	// bind block
+	const callIconG = d3.select('#call-icon').datum(block);
+	const textIconG = d3.select('#text-icon').datum(block);
+	const repeatCallIconG = d3.select('#repeat-call-icon').datum(block);
+	const repeatTextIconG = d3.select('#repeat-text-icon').datum(block);
+	const noteIconG = d3.select('#note-icon').datum(block);
+	const closeOverlayIconG = d3.select('#close-block-overlay-icon').datum(block);
+	const startTimeG = d3.select('g.start-time').datum(block);
+	const endTimeG = d3.select('g.end-time').datum(block);
+	const noteContentG = d3.select('#note-content').datum(block);
+	const deleteIconG = d3.select('#delete-icon').datum(block);
+	const copyIconG = d3.select('#copy-icon').datum(block);
+	const moveIconG = d3.select('#move-icon').datum(block);
+	const resizeTopG = d3.select('#resize-top').datum(block);
+	const resizeBottomG = d3.select('#resize-bottom').datum(block);
+	const saveIconG = d3.select('#save-icon').datum(block);
+
+	callIconG.attr('transform', `translate(${dayX + 6}, ${topLineY - 26})`)
+			.attr('display', 'block')
+		.select('rect')
+			.attr('fill', block.isReceivingCalls ? 'rgb(11, 239, 65)' : 'rgb(150, 150, 150)');
+
+	textIconG.attr('transform', `translate(${nextDayX - 26}, ${topLineY - 26})`)
+			.attr('display', 'block')
+		.select('rect')
+			.attr('fill', block.isReceivingTexts ? 'rgb(15, 114, 255)' : 'rgb(150, 150, 150)');
+
+	repeatCallIconG.attr('transform', `translate(${dayX + 6}, ${bottomLineY + 3})`)
+			.attr('display', block.isCallRepeating ? 'block' : 'none')
+		.select('rect')
+			.attr('fill', block.isReceivingCalls && block.isCallRepeating ? 'rgb(11, 239, 65)' : 'rgb(150, 150, 150)');
+
+	repeatTextIconG.attr('transform', `translate(${nextDayX - 26}, ${bottomLineY + 3})`)
+			.attr('display', block.isTextRepeating ? 'block' : 'none')
+		.select('rect')
+			.attr('fill', block.isReceivingTexts && block.isTextRepeating ? 'rgb(15, 114, 255)' : 'rgb(150, 150, 150)');
+
+	if (block.comment) {
+		const noteText = noteContentG.attr('transform', `translate(${dayX}, ${bottomLineY + 27})`)
+				.attr('display', 'block')
+			.select('text');
+		svgTextWithoutOverflow(block.comment, noteText.node(), dimensions.dayWidth - 4);
+	} else {
+		noteContentG.attr('display', 'none');
+	}
+
+	if (verbose) {
+		repeatCallIconG.attr('display', block.isReceivingCalls ? 'block' : 'none');
+		repeatTextIconG.attr('display', block.isReceivingTexts ? 'block' : 'none');
+		noteIconG.attr('transform', `translate(${nextDayX + 3}, ${topLineY - 26})`)
+			.attr('display', 'block');
+		deleteIconG.attr('transform', `translate(${nextDayX + 3}, ${topLineY - 2})`)
+			.attr('display', 'block');
+		copyIconG.attr('transform', `translate(${nextDayX + 3}, ${topLineY + 22})`)
+			.attr('display', 'block');
+		moveIconG.attr('transform', `translate(${midDayX - 5}, ${midDayY - 10})`)
+			.attr('display', 'block');
+		resizeTopG.attr('transform', `translate(${midDayX - 12}, ${topLineY - 2})`)
+			.attr('display', 'block');
+		resizeBottomG.attr('transform', `translate(${midDayX - 12}, ${bottomLineY - 2})`)
+			.attr('display', 'block');
+		d3.selectAll('.time-block:not([data-selected])').style('pointer-events', 'none');
+		d3.select('.tracking-empty').style('pointer-events', 'none');
+
+		if (Mode.get() === 'edit') {
+			closeOverlayIconG
+				.attr('transform', `translate(${nextDayX + 11}, ${topLineY - 53})`)
+				.attr('display', 'block');
+		} else { // mode === 'creating'
+			saveIconG
+				.attr('transform', `translate(${nextDayX + 3}, ${topLineY - 53})`)
+				.attr('display', 'block');
+		}
+	}
+}
+
+function svgTextWithoutOverflow(text, textNode, maxWidth) {
+	textNode.textContent = text = text || '';
+	let textLength = textNode.getComputedTextLength();
+	while (textLength > maxWidth) {
+		text = text.slice(0, -1);
+		textNode.textContent = `${text}...`;
+		textLength = textNode.getComputedTextLength();
+	}
+	return text;
+}
+
 class Hover {
-	static showTopLine(lineY, textX, textY = lineY, lineText) {
+	static showTopLine(lineY, textX, textY = lineY, lineText, below = true, debug = false) {
 		const paddingV = 2.5;
 		const paddingH = 5;
+		const aOrB = below ? '' : '-above';
 
-		d3.select('#track-line-top')
+		// d3.select(`#track-line${aOrB}-top`)
+		d3.select(`#track-line-top`)
 			.attr('display', 'inline')
 			.attr('y1', lineY).attr('y2', lineY);
-		const trackText = d3.select('#track-text-top')
+		const trackText = d3.select(`#track-text${aOrB}-top`)
 			.attr('display', 'inline')
 			.attr('x', textX).attr('y', textY)
 			.text(lineText);
 		const textBBox = trackText.node().getBBox();
-		d3.select('#track-text-border-top')
+		d3.select(`#track-text${aOrB}-border-top`)
 			.attr('display', 'inline')
 			.attr('x', textBBox.x - paddingH)
 			.attr('y', textBBox.y - paddingV)
@@ -553,19 +912,21 @@ class Hover {
 			.attr('height', textBBox.height + paddingV*2);
 	}
 
-	static showBottomLine(lineY, textX, textY = lineY, lineText) {
+	static showBottomLine(lineY, textX, textY = lineY, lineText, below = true, debug = false) {
 		const paddingV = 2.5;
 		const paddingH = 5;
+		const aOrB = below ? '' : '-above';
 
-		d3.select('#track-line-bottom')
+		// d3.select(`#track-line${aOrB}-bottom`)
+		d3.select(`#track-line-bottom`)
 			.attr('display', 'inline')
 			.attr('y1', lineY).attr('y2', lineY);
-		const trackTextBottom = d3.select('#track-text-bottom')
+		const trackTextBottom = d3.select(`#track-text${aOrB}-bottom`)
 			.attr('display', 'inline')
 			.attr('x', textX).attr('y', textY)
 			.text(lineText);
 		const textBBox = trackTextBottom.node().getBBox();
-		d3.select('#track-text-border-bottom')
+		d3.select(`#track-text${aOrB}-border-bottom`)
 			.attr('display', 'inline')
 			.attr('x', textBBox.x - paddingH)
 			.attr('y', textBBox.y - paddingV)
@@ -577,6 +938,10 @@ class Hover {
 		d3.select('#track-line-top').attr('display', 'none');
 		d3.select('#track-text-top').attr('display', 'none');
 		d3.select('#track-text-border-top').attr('display', 'none');
+
+		d3.select('#track-line-above-top').attr('display', 'none');
+		d3.select('#track-text-above-top').attr('display', 'none');
+		d3.select('#track-text-above-border-top').attr('display', 'none');
 	}
 
 	/** remove mouseover tracking lines and texts */
@@ -584,6 +949,10 @@ class Hover {
 		d3.select('#track-line-bottom').attr('display', 'none');
 		d3.select('#track-text-bottom').attr('display', 'none');
 		d3.select('#track-text-border-bottom').attr('display', 'none');
+
+		d3.select('#track-line-above-bottom').attr('display', 'none');
+		d3.select('#track-text-above-bottom').attr('display', 'none');
+		d3.select('#track-text-above-border-bottom').attr('display', 'none');
 	}
 
 	static hideLines() {
@@ -594,8 +963,30 @@ class Hover {
 
 // --------------------------- Event Handlers --------------------------- \\
 
+function addHoverClass() {
+	d3.select(this).selectAll('*').classed('hover', true);
+}
+
+function removeHoverClass() {
+	d3.select(this).selectAll('*').classed('hover', false);
+}
+
+function timeBlockEnter(block) {
+	if (Mode.get() === 'edit' || Mode.get().includes('dragging') || Mode.get() === 'creating')
+		return;
+	showBlockOverlay(block);
+}
+
+function timeBlockLeave(block) {
+	if (Mode.get() === 'edit' || Mode.get() === 'creating')
+		return;
+
+	Hover.hideLines()
+	d3.selectAll('.overlay-button').attr('display', 'none');
+}
+
 function timeBlockClicked(block) {
-	switch (mode) {
+	switch (Mode.get()) {
 
 		// show confirmation modal
 		case 'delete':
@@ -614,87 +1005,512 @@ function timeBlockClicked(block) {
 			break;
 
 		case 'copy':
-			if (d3.select('g.day-square rect.time-block.selected').empty()) {
-				d3.select(this).classed('selected', true);
+			console.log("DEBUG timeBlockClicked case 'copy'");
+			if (!this.hasAttribute('data-selected')) {
+				console.log("DEBUG timeBlockClicked inside if");
+				d3.select(this).attr('data-selected', '');
 				copyMode.showDaySelectionSquares(block.dayIndex);
 			}
 			break;
 
 		// show edit time block modal
 		case '':
-			timeBlockModal.show(block, 'edit', setWeeklyData);
+			Mode.set('edit');
+			d3.select(this).attr('data-selected', '');
+			showBlockOverlay(block, true);
 	}
 }
 
+let totalDragDistance = 0;
+let totalDragOverflow = 0;
+let dragStart = 0;
+
 function timeBlockDragged(block) {
-	if (mode !== '')
+	if (Mode.get() !== 'edit' && Mode.get() !== 'creating')
 		return;
 
-	const scale = getDayScale(block.dayIndex);
+	const blockRect = Mode.get() === 'edit' ? d3.select(block.rect) : d3.select('.time-block-new');
+
+	// initialize drag state on first drag event
+	if (!dragStart) {
+		dragStart = +blockRect.attr('y');
+		d3.selectAll('.overlay-button').attr('display', 'none');
+	}
+
+	// determine how far the block can be dragged in either direction
 	const schedule = timeBlockService.getActiveWeeklySchedule();
-	const newTopY = +d3.select(this).attr('y') + d3.event.dy;
-	const [topBoundaryY, bottomBoundaryY] = schedule.findGrowthBoundaries(block.blockID).map(scale);
-	const newBottomY = +d3.select(this).attr('height') + newTopY;
+	const [ topBoundaryMoment, bottomBoundaryMoment ] = schedule.findGrowthBoundaries(block);
 
-	// move/resize rect
-	if (newTopY < topBoundaryY)
-		d3.select(this).attr('y', topBoundaryY);
-	else if (newBottomY > bottomBoundaryY)
-		d3.select(this).attr('y', bottomBoundaryY - +d3.select(this).attr('height'));
+	// update drag state properties and determine new block rect y coordinate
+	const dragDistance = d3.event.dy;
+	if (totalDragOverflow > 5 || totalDragOverflow < -5)
+		totalDragOverflow += dragDistance;
 	else
-		d3.select(this).attr('y', newTopY);
+		totalDragDistance += dragDistance;
+	const newTopY = dragStart + totalDragDistance;
 
-	// determine positioning/values for top/bottom lines/texts
-	const paddingV = 2.5;
-	const paddingH = 5;
+	// find the 30-min block closest to the block start time (we will snap to this time)
+	const scale = getDayScale(block.dayIndex);
 	const topTime = scale.invert(newTopY);
-	const [topHours12, topMeridiem] = to12Hours(topTime.getHours());
-	const bottomTime =scale.invert(newBottomY);
-	const [bottomHours12, bottomMeridiem] = to12Hours(bottomTime.getHours());
-	const x = d3.mouse(d3.select('.tracking-empty').node())[0];
-	const topLineText = `${zPad(topHours12)}:${zPad(topTime.getMinutes())} ${topMeridiem}`;
-	const bottomLineText = `${zPad(bottomHours12)}:${zPad(bottomTime.getMinutes())} ${bottomMeridiem}`;
+	let snapToMoment = findClosest30Mins(topTime);
+	let snapToBottomMoment = snapToMoment.clone().add(block.duration);
+
+	// adjust time to snap to if it would be outside of its growth boundaries
+	if (topBoundaryMoment.isAfter(snapToMoment, 'minute')) {
+		totalDragDistance -= dragDistance;
+		totalDragOverflow += dragDistance;
+		snapToMoment = topBoundaryMoment.clone();
+	}
+	if (bottomBoundaryMoment.isBefore(snapToBottomMoment, 'minute')) {
+		totalDragDistance -= dragDistance;
+		totalDragOverflow += dragDistance;
+		snapToMoment = bottomBoundaryMoment.clone().subtract(block.duration);
+	}
+	snapToBottomMoment = snapToMoment.clone().add(block.duration);
+
+	// determine positioning/values for top/bottom tooltip lines/texts
+	const dimensions = getDimensions();
+	const x = dimensions.dayWidth * (block.dayIndex + 0.5);
+	const [topHours12, topMeridiem] = to12Hours(snapToMoment.hours());
+	const [bottomHours12, bottomMeridiem] = to12Hours(snapToBottomMoment.hours());
+	const topLineText = `${topHours12}:${zPad(snapToMoment.minutes())} ${topMeridiem}`;
+	const bottomLineText = `${bottomHours12}:${zPad(snapToBottomMoment.minutes())} ${bottomMeridiem}`;
+
+	// convert times to snap-to to coordinates
+	const snapToY = scale(snapToMoment.toDate());
+	const snapToBottomY = +blockRect.attr('height') + snapToY;
 
 	// adjust top and bottom tracking lines/texts
-	Hover.showTopLine(newTopY, x, newTopY - 10, topLineText);
-	Hover.showBottomLine(newBottomY, x, newBottomY + 21, bottomLineText);
+	Hover.showTopLine(snapToY, x, snapToY - 10, topLineText, false);
+	Hover.showBottomLine(snapToBottomY, x, snapToBottomY + 21, bottomLineText, false);
+
+	// snap time block rect to the calculated coordinates
+	blockRect.attr('y', snapToY);
 }
 
 function timeBlockDragEnded(block) {
-	if (mode !== '')
+	if (Mode.get() !== 'edit' && Mode.get() !== 'creating')
 		return;
 
+	if (isBlockEqualToRect(block)) {
+		d3.selectAll('.overlay-button')
+			.filter(function() {
+				const isNotEmptyNote = d3.select(this).attr('id') !== 'note-content' || block.comment;
+				const isNotRepeatCall = d3.select(this).attr('id') !== 'repeat-call-icon' || block.isCallRepeating;
+				const isNotRepeatText = d3.select(this).attr('id') !== 'repeat-text-icon' || block.isTextRepeating;
+				return isNotEmptyNote && isNotRepeatCall && isNotRepeatText;
+			})
+			.attr('display', 'block');
+		return;
+	}
+
+	Mode.set(`dragging ${Mode.get()}`);
+
+	dragStart = 0;
+	totalDragDistance = 0;
+	totalDragOverflow = 0;
 	const scale = getDayScale(block.dayIndex);
-	const newTopY = +d3.select(this).attr('y') + d3.event.dy;
-	const newBottomY = +d3.select(this).attr('height') + newTopY;
+	const newTopY = +d3.select(block.rect).attr('y') + d3.event.dy;
+	const newBottomY = +d3.select(block.rect).attr('height') + newTopY;
 	const newStartTime = scale.invert(newTopY);
 	const newEndTime = scale.invert(newBottomY);
 
-	let tempModifiedTimeBlock = new WeeklyTimeBlock(block);
+	let tempModifiedTimeBlock = block.clone().setTime(newStartTime, newEndTime);
+
+	Hover.hideLines();
+	d3.select(block.rect).attr('data-selected', '');
+
+	timeClick(tempModifiedTimeBlock);
+}
+
+function timeBlockStretch(block) {
+	console.log('stretch');
+	const schedule = timeBlockService.getActiveWeeklySchedule();
+	const scale = getDayScale(block.dayIndex);
+	let [ topBoundaryMoment, bottomBoundaryMoment ] = schedule.findGrowthBoundaries(block.blockID);
+	const isTop = d3.select(this).attr('id').indexOf('bottom') === -1;
+
+	Mode.set(`dragging ${Mode.get()}`);
+	d3.selectAll('.overlay-button').attr('display', 'none');
+
+	// determine new block rect attributes
+	let rectY, rectHeight, tempModifiedTimeBlock = block.clone();
+	if (isTop) {
+		rectY = scale(topBoundaryMoment.toDate());
+		rectHeight = scale(block.endTime) - rectY;
+		tempModifiedTimeBlock.startMoment = topBoundaryMoment;
+	} else {
+		rectY = scale(block.startTime);
+		rectHeight = scale(bottomBoundaryMoment.toDate()) - scale(block.startTime);
+		tempModifiedTimeBlock.endMoment = bottomBoundaryMoment;
+	}
+	Hover.hideLines();
+
+	// stretch time block rect, then show time modal
+	d3.select(block.rect).transition().duration(450).ease(d3.easeSin)
+		.attr('y', rectY)
+		.attr('height', rectHeight)
+		.on('end', () => timeClick(tempModifiedTimeBlock));
+}
+
+function timeBlockResized(block) {
+	if (Mode.get() !== 'edit')
+		return;
+
+	if (clickTimer)
+		return;
+
+	// initialize drag state on first drag event
+	if (!dragStart) {
+		dragStart = +d3.select(block.rect).attr('y');
+		d3.selectAll('.overlay-button').attr('display', 'none');
+	}
+
+	const scale = getDayScale(block.dayIndex);
+	const snapTo = getSnapTo(getSquareForDay(block.dayIndex).node());
+	const isTop = d3.select(this).attr('id').indexOf('bottom') === -1;
+	const blockRect = d3.select(block.rect);
+
+	// determine how far the block edge can be dragged in either direction
+	const schedule = timeBlockService.getActiveWeeklySchedule();
+	let [ topBoundaryMoment, bottomBoundaryMoment ] = schedule.findGrowthBoundaries(block.blockID);
+	if (isTop)
+		bottomBoundaryMoment = block.endMoment.subtract(30, 'minutes');
+	else // isBottom
+		topBoundaryMoment = block.startMoment.add(30, 'minutes');
+	const topBoundaryY = scale(topBoundaryMoment.toDate());
+	const bottomBoundaryY = scale(bottomBoundaryMoment.toDate());
+
+	// adjust the y coordinate if it is out of bounds
+	if (snapTo.y < topBoundaryY)
+		snapTo.y = topBoundaryY;
+	else if (snapTo.y > bottomBoundaryY)
+		snapTo.y = bottomBoundaryY;
+
+	// apply new y-coord and height to block rect
+	const height = isTop ? scale(block.endTime) - snapTo.y : snapTo.y - blockRect.attr('y');
+	blockRect.attr('height', height);
+	if (isTop) {
+		blockRect.attr('y', snapTo.y);
+	}
+
+	// determine positioning/values for top/bottom tooltip lines/texts
+	let topTimeY, bottomTimeY;
+	if (isTop) {
+		topTimeY = snapTo.y;
+		bottomTimeY = snapTo.y + height;
+	} else {
+		topTimeY = snapTo.y - height;
+		bottomTimeY = snapTo.y;
+	}
+	const dimensions = getDimensions();
+	const x = dimensions.dayWidth * (block.dayIndex + 0.5);
+	const snapToTopTime = scale.invert(topTimeY);
+	const snapToBottomTime = scale.invert(bottomTimeY);
+	const [topHours12, topMeridiem] = to12Hours(snapToTopTime.getHours());
+	const [bottomHours12, bottomMeridiem] = to12Hours(snapToBottomTime.getHours());
+	const topLineText = `${topHours12}:${zPad(snapToTopTime.getMinutes())} ${topMeridiem}`;
+	const bottomLineText = `${bottomHours12}:${zPad(snapToBottomTime.getMinutes())} ${bottomMeridiem}`;
+
+	// adjust top and bottom tracking lines/texts
+	Hover.showTopLine(topTimeY, x, topTimeY - 10, topLineText, false);
+	Hover.showBottomLine(bottomTimeY, x, bottomTimeY + 21, bottomLineText, false);
+}
+
+let clickTimer = null;
+function timeBlockResizeEnded(block) {
+	if (Mode.get() !== 'edit' && Mode.get() !== 'creating')
+		return;
+
+	dragStart = 0;
+	totalDragDistance = 0;
+	totalDragOverflow = 0;
+	const scale = getDayScale(block.dayIndex);
+	const newTopY = +d3.select(block.rect).attr('y') + d3.event.dy;
+	const newBottomY = +d3.select(block.rect).attr('height') + newTopY;
+	const newStartTime = scale.invert(newTopY);
+	const newEndTime = scale.invert(newBottomY);
+
+	// if (moment(newStartTime).isSame(block.startMoment, 'minute') && moment(newEndTime).isSame(block.endMoment, 'minute')) {
+	if (isBlockEqualToRect(block)) {
+		clickTimer = setInterval(() => {
+			clearInterval(clickTimer);
+			clickTimer = null;
+		}, 500)
+		d3.selectAll('.overlay-button')
+			.filter(function() {
+				const isNotEmptyNote = d3.select(this).attr('id') !== 'note-content' || block.comment;
+				const isNotNoRepeatCall = d3.select(this).attr('id') !== 'repeat-call-icon' || block.isCallRepeating;
+				const isNotNoRepeatText = d3.select(this).attr('id') !== 'repeat-text-icon' || block.isTextRepeating;
+				return isNotEmptyNote && isNotNoRepeatCall && isNotNoRepeatText;
+			})
+			.attr('display', 'block');
+		return;
+	}
+
+	Mode.set(`dragging ${Mode.get()}`);
+
+	let tempModifiedTimeBlock = block.clone();
 	tempModifiedTimeBlock.startHour = newStartTime.getHours();
 	tempModifiedTimeBlock.startMinute = newStartTime.getMinutes();
 	tempModifiedTimeBlock.endHour = newEndTime.getHours();
 	tempModifiedTimeBlock.endMinute = newEndTime.getMinutes();
 
 	Hover.hideLines();
+	d3.select(block.rect).attr('data-selected', '');
 
-	const editCanceled = () => d3.select(this)
-		.transition()
-		.duration(1000)
-		.delay(250)
-		.ease(d3.easeExp)
-		.attr('y', block => scale(block.startTime));
-	setTimeout(() =>
-		timeBlockModal.show(tempModifiedTimeBlock, 'edit', setWeeklyData, editCanceled, 0)
-	);
+	timeClick(tempModifiedTimeBlock);
+}
+
+function isBlockEqualToRect(block) {
+	const rect = d3.select(block.rect);
+	const scale = getDayScale(block.dayIndex);
+	const rectY = +rect.attr('y');
+	const rectHeight = +rect.attr('height');
+	const rectStartMoment = moment(scale.invert(rectY));
+	const rectEndMoment = moment(scale.invert(rectY + rectHeight));
+	return rectStartMoment.isSame(block.startMoment, 'minute') && rectEndMoment.isSame(block.endMoment, 'minute');
+}
+
+function closeOverlayIconClicked() {
+	Hover.hideLines();
+	d3.selectAll('.overlay-button').attr('display', 'none');
+	d3.selectAll('.time-block').style('pointer-events', 'auto');
+	d3.select('.tracking-empty').style('pointer-events', 'auto');
+	d3.selectAll('[data-selected]').attr('data-selected', null);
+	if (!d3.selectAll('rect.day-select').empty()) {
+		toolbar.removeCopyModeButtons();
+		copyMode.setCopyMode(false);
+	}
+	Mode.set('');
+}
+
+function callIconClicked(block) {
+	const { isReceivingCalls } = block;
+	d3.select(this).select('rect')
+		.attr('fill', isReceivingCalls ? 'rgb(150, 150, 150)' : 'rgb(11, 239, 65)');
+	if (isReceivingCalls) {
+		block.isCallRepeating = false;
+		d3.select('#repeat-call-icon')
+				.attr('display', 'none')
+			.select('rect')
+				.attr('fill', 'rgb(150, 150, 150)');
+	} else {
+		d3.select('#repeat-call-icon').attr('display', 'block');
+	}
+
+	block.isReceivingCalls = !isReceivingCalls;
+	updateColorClass(d3.select(block.rect));
+
+	if (Mode.get() === 'edit') {
+		timeBlockService.edit(block)
+			.then(() => console.log('edit successful'))
+			.catch(error => console.log('edit failed: ', error));
+	}
+}
+
+function textIconClicked(block) {
+	const { isReceivingTexts } = block;
+	d3.select(this).select('rect')
+		.attr('fill', isReceivingTexts ? 'rgb(150, 150, 150)' : 'rgb(15, 114, 255)');
+	if (isReceivingTexts) {
+		block.isTextRepeating = false;
+		d3.select('#repeat-text-icon')
+				.attr('display', 'none')
+			.select('rect')
+				.attr('fill', 'rgb(150, 150, 150)');
+	} else {
+		d3.select('#repeat-text-icon').attr('display', 'block');
+	}
+
+	block.isReceivingTexts = !isReceivingTexts;
+	updateColorClass(d3.select(block.rect));
+
+	if (Mode.get() === 'edit') {
+		timeBlockService.edit(block)
+			.then(() => console.log('edit successful'))
+			.catch(error => console.log('edit failed: ', error));
+	}
+}
+
+function repeatCallIconClicked(block) {
+	const { isCallRepeating } = block;
+	d3.select(this).select('rect')
+		.attr('fill', isCallRepeating ? 'rgb(150, 150, 150)' : 'rgb(11, 239, 65)');
+
+	block.isCallRepeating = !isCallRepeating;
+
+	if (Mode.get() === 'edit') {
+		timeBlockService.edit(block)
+			.then(() => console.log('edit successful'))
+			.catch(error => console.log('edit failed: ', error));
+	}
+}
+
+function repeatTextIconClicked(block) {
+	const { isTextRepeating } = block;
+	d3.select(this).select('rect')
+		.attr('fill', isTextRepeating ? 'rgb(150, 150, 150)' : 'rgb(15, 114, 255)');
+
+	block.isTextRepeating = !isTextRepeating;
+
+	if (Mode.get() === 'edit') {
+		timeBlockService.edit(block)
+			.then(() => console.log('edit successful'))
+			.catch(error => console.log('edit failed: ', error));
+	}
+}
+
+function noteIconClicked(block) {
+	document.getElementById('note').value = block.comment || '';
+
+	d3.select('.modal-container')
+			.style('display', 'flex')
+		.select('#block-note-modal')
+			.style('display', 'inline-block');
+}
+
+function deleteIconClicked(block) {
+	const deleteBlock = () => {
+		const tempMode = Mode.get();
+		closeOverlayIconClicked();
+		Mode.set(tempMode);
+		if (Mode.get() === 'edit')
+			timeBlockService.remove(block)
+				.then(setWeeklyData)
+				.then(() => Mode.set(''));
+		else { // mode === 'creating'
+			d3.select('.time-block-new').transition().duration(750)
+				.style('opacity', 0)
+				.remove();
+			Mode.set('');
+		}
+	};
+	confirmModal.show(deleteBlock);
+}
+
+function copyIconClicked(block) {
+	const isPressed = d3.select(this).classed('pressed');
+	d3.select(this).classed('pressed', !isPressed).selectAll('*').classed('pressed', !isPressed);
+	if (isPressed) {
+		toolbar.removeCopyModeButtons();
+		copyMode.setCopyMode(false);
+	}
+	else
+		copyMode.showDaySelectionSquares(block.dayIndex);
+}
+
+function saveNoteClicked(event) {
+	event.preventDefault();
+	const note = document.getElementById('note').value.trim();
+
+	if (Mode.get() === 'edit') {
+		const newBlock = d3.select('[data-selected]').datum().clone();
+		newBlock.comment = note;
+
+		timeBlockService.edit(newBlock)
+			.then(cancelNoteClicked)
+			.then(() => setWeeklyData())
+			.then(() => showBlockOverlay(newBlock, true))
+			.catch(error => console.log(error));
+	} else { // mode === 'creating'
+		const block = d3.select('[data-selected]').datum();
+		block.comment = note;
+		cancelNoteClicked();
+		showBlockOverlay(block, true);
+	}
+}
+
+function saveIconClicked(block) {
+	timeBlockService.add(block)
+		.then(blockWithID => {
+			const newBlockRect = d3.select('.time-block-new');
+			blockWithID.rect = newBlockRect.node();
+			newBlockRect.datum(blockWithID).classed('time-block-new', false);
+		})
+		.then(closeOverlayIconClicked)
+}
+
+function cancelNoteClicked(event) {
+	if (event && event.preventDefault)
+		event.preventDefault();
+
+	d3.select('.modal-container')
+			.style('display', 'none')
+		.select('#block-note-modal')
+			.style('display', 'none');
+}
+
+function timeClick(block) {
+	document.getElementById('startTime').value = zPad(block.startHour)+':'+zPad(block.startMinute);
+	document.getElementById('endTime').value = zPad(block.endHour)+':'+zPad(block.endMinute);
+
+	d3.select('.modal-container')
+			.style('display', 'flex')
+		.select('#block-time-modal')
+			.style('display', 'inline-block');
+}
+
+function saveTimeClick(event) {
+	const blockRect = d3.select('.time-block[data-selected]');
+	Mode.set(Mode.get().split(' ').pop());
+
+	// extract time data from form
+	const startHour = document.getElementById('startTime').value.slice(0, 2);
+	const startMinute = document.getElementById('startTime').value.slice(3);
+	const endHour = document.getElementById('endTime').value.slice(0, 2);
+	const endMinute = document.getElementById('endTime').value.slice(3);
+
+	if (Mode.get() === 'edit') {
+		// clock block and adjust times with form data
+		const newBlock = blockRect.datum().clone().setMoments(moment({ hour: startHour, minute: startMinute }), moment({ hour: endHour, minute: endMinute }));
+		newBlock.rect = blockRect.node();
+
+		// send block edit request
+		timeBlockService.edit(newBlock)
+			.then(cancelTimeClick)
+			.then(() => setWeeklyData())
+			.then(() => showBlockOverlay(newBlock, true))
+			.catch(error => console.log(error));
+	} else { // mode === 'creating'
+		const block = blockRect.datum().setMoments(moment({ hour: startHour, minute: startMinute }), moment({ hour: endHour, minute: endMinute }));
+		cancelTimeClick();
+		showBlockOverlay(block, true);
+	}
+
+	event.preventDefault();
+}
+
+function cancelTimeClick(event) {
+	if (event && event.preventDefault)
+		event.preventDefault();
+
+	d3.select('.modal-container')
+			.style('display', 'none')
+		.select('#block-time-modal')
+			.style('display', 'none');
+
+	if (Mode.get().includes('dragging')) {
+		Mode.set(Mode.get().split(' ').pop());
+		const block = d3.select('.time-block[data-selected]').datum();
+		if (Mode.get() === 'edit') {
+			setWeeklyData().then(() => showBlockOverlay(block, true));
+		} else {
+			const scale = getDayScale(block.dayIndex);
+			d3.select(block.rect).transition().duration(450).ease(d3.easeSin)
+				.attr('y', block => scale(block.startTime))
+				.attr('height', block => scale(block.endTime) - scale(block.startTime))
+				.on('end', block => showBlockOverlay(block, true))
+		}
+	}
 }
 
 /** Enables 'creating' mode and Creates a new 30-min time block rect at the location clicked. */
 function emptySpaceMouseDown() {
-	if (mode !== '')
+	if (Mode.get() !== '')
 		return;
 
-	mode = 'creating';
+	Mode.set('creating');
 
 	const dimensions = getDimensions();
 	const snapTo = getSnapTo(this);
@@ -704,21 +1520,27 @@ function emptySpaceMouseDown() {
 	const thirtyMinAfterStart = moment(startTime).add(30, 'minutes');
 	const endTimeY = snapTo.scale(thirtyMinAfterStart.toDate());
 	const newRectHeight = endTimeY - snapTo.y;
+
 	d3.select('.underground-canvas').append('rect')
 		.attr('class', 'time-block time-block-new')
 		.attr('x', dimensions.dayWidth * snapTo.day)
 		.attr('y', snapTo.y)
-		.attr('rx', 8)
-		.attr('ry', 8)
 		.attr('width', dimensions.dayWidth)
-		.attr('height', newRectHeight);
+		.attr('height', newRectHeight)
+		.on('click', timeBlockClicked)
+		.on('mouseover', timeBlockEnter)
+		.on('mouseout', timeBlockLeave)
+		.call(d3.drag()
+			.on('drag', timeBlockDragged)
+			.on('end', timeBlockDragEnded)
+		);
 }
 
 function emptySpaceMouseMove() {
 	const snapTo = getSnapTo(this);
 	const lineText = `${snapTo.hours12}:${zPad(snapTo.minutes)} ${snapTo.meridiem}`;
-	
-	if (mode === 'creating') {
+
+	if (Mode.get() === 'creating') {
 
 		// determine height to snap to for new time block rect
 		const newRect = d3.select('.time-block-new');
@@ -741,17 +1563,35 @@ function emptySpaceMouseMove() {
 	}
 
 	// move line/text to mouse pointer and display corresponding time-value
-	else if (mode === '') {
+	else if (Mode.get() === '') {
 		Hover.showTopLine(snapTo.y, snapTo.x, snapTo.y - 10, lineText);
 	}
 }
 
 /** Create time block from new rect data and show add block modal using the new block. */
 function emptySpaceMouseOut() {
-	if (mode === 'creating') {
-		mode = '';
-		const newTimeBlock = createBlockFromNewRect(this);
-		showAddBlockModal(newTimeBlock);
+	if (Mode.get() === 'creating') {
+		// Mode.set('');
+		const snapTo = getSnapTo(this);
+		const newBlockRect = d3.select('.time-block-new')
+			.attr('data-selected', '')
+			.attr('x', 0)
+			.classed(timeBlockColorClass({}), true);
+		const newRectTopY = newBlockRect.attr('y');
+		const startTime = snapTo.scale.invert(newRectTopY);
+		const newTimeBlock = new WeeklyTimeBlock({
+			dayOfWeek: WeeklySchedule.days[snapTo.day],
+			startHour: startTime.getHours(),
+			startMinute: startTime.getMinutes(),
+			endHour: snapTo.hours24,
+			endMinute: snapTo.minutes
+		});
+
+		newTimeBlock.rect = newBlockRect.node();
+		newBlockRect.datum(newTimeBlock);
+
+		getSquareForDay(snapTo.day).node().appendChild(newBlockRect.node());
+		showBlockOverlay(newTimeBlock, true);
 	}
 
 	// remove tracking lines and texts
@@ -759,7 +1599,7 @@ function emptySpaceMouseOut() {
 }
 
 function fillBlockMouseOver(fillBlock) {
-	if (mode === 'fill') {
+	if (Mode.get() === 'fill') {
 		// disable animation and show rect fill
 		fillBlock.animate = false;
 		d3.select(this).interrupt();
@@ -770,7 +1610,7 @@ function fillBlockMouseOver(fillBlock) {
 }
 
 function fillBlockMouseOut(fillBlock) {
-	if (mode === 'fill') {
+	if (Mode.get() === 'fill') {
 		// enable animation and hide rect fill
 		fillBlock.animate = true;
 		d3.select(this).interrupt();
@@ -782,7 +1622,7 @@ function fillBlockMouseOut(fillBlock) {
 }
 
 function fillBlockClick(fillBlock) {
-	mode = '';
+	Mode.set('');
 
 	// disable animation
 	fillBlock.animate = false;

@@ -17,6 +17,7 @@ class DashboardView {
 	<script src="/js/d3.v4.min.js"></script>
 	<script src="/js/moment.min.js"></script>
 	<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.22.0/moment.min.js"></script> -->
+	<link href="https://fonts.googleapis.com/css?family=Copse|Crimson+Text|Kameron|Lato|Open+Sans|Roboto|Roboto+Condensed|Varela+Round" rel="stylesheet">
 	<link rel="stylesheet" href="/css/dashboard.css" type="text/css" />
 </head>
 <body>
@@ -34,6 +35,7 @@ class DashboardView {
 				<button id="toolbar-split" class="toggle-button" type="button">Split</button>
 				<button id="toolbar-add" class="toggle-button" type="button">Add</button>
 			</div>
+			<div id="debug-mode"></div>
 		</div>
 
 		<div id="messages-to-user"></div>
@@ -68,12 +70,12 @@ class DashboardView {
 		<form id="timeblock-form" action="/time-block/details">
 			<fieldset>
 				<div class="input-group">
-					<label for="startTime" class="time-label">Start</label>
-					<input id="startTime" type="time" name="startTime" size="8" required="required" title="Enter a valid time (HH:MM XM)" />
+					<!-- <label for="startTime" class="time-label">Start</label> -->
+					<!-- <input id="startTime" type="time" name="startTime" size="8" required="required" title="Enter a valid time (HH:MM XM)" /> -->
 				</div>
 				<div class="input-group">
-					<label for="endTime" class="time-label">End</label>
-					<input id="endTime" type="time" name="endTime" size="8" required="required" title="Enter a valid time (HH:MM XM)" />
+					<!-- <label for="endTime" class="time-label">End</label> -->
+					<!-- <input id="endTime" type="time" name="endTime" size="8" required="required" title="Enter a valid time (HH:MM XM)" /> -->
 				</div>
 			</fieldset>
 			<fieldset>
@@ -90,26 +92,64 @@ class DashboardView {
 				</div>
 			</fieldset>
 			<fieldset>
-				<legend>Comment</legend>
+				<!-- <legend>Comment</legend>
 				<textarea id="comment" name="comment" cols="18" rows="3"></textarea>
 				<input id="blockID" type="hidden" name="blockID" />
-				<input id="dayOfWeek" type="hidden" name="dayOfWeek" />
+				<input id="dayOfWeek" type="hidden" name="dayOfWeek" /> -->
 			</fieldset>
 			<fieldset>
-				<div id="modal-buttons">
+				<!-- <div id="modal-buttons">
 					<input type="submit" value="Save" />
 					<input type="button" value="Cancel" />
-				</div>
+				</div> -->
 			</fieldset>
 		</form>
 	</div>
 
-	<div id="confirm-modal" class="modal">
-		<div class="modal-message">You sure?</div>
-		<div id="confirm-buttons" style="float: right">
-			<button id="yes" type="button">Yeah</button>
-			<button id="no" type="button">Nah</button>
+	<div class="modal-container">
+
+		<div id="block-time-modal" class="modal">
+			<form id="block-time-form" action="/time-block/details">
+				<fieldset>
+					<div class="input-group">
+						<label for="startTime" class="time-label">From</label>
+						<input id="startTime" type="time" name="startTime" size="8" required="required" title="Enter a valid time (HH:MM XM)" />
+					</div>
+					<div class="input-group">
+						<label for="endTime" class="time-label">To</label>
+						<input id="endTime" type="time" name="endTime" size="8" required="required" title="Enter a valid time (HH:MM XM)" />
+					</div>
+				</fieldset>
+				<div class="modal-buttons">
+					<button type="submit" class="push-button">Save</button>
+					<button type="button" class="push-button secondary">Cancel</button>
+				</div>
+			</form>
 		</div>
+
+		<div id="block-note-modal" class="modal">
+			<form id="block-note-form" action="/">
+				<fieldset>
+					<div>
+						<label for="note">Note</label>
+						<textarea id="note" name="comment" cols="25" rows="5"></textarea>
+					</div>
+				</fieldset>
+				<div class="modal-buttons">
+					<button type="submit" class="push-button">Save</button>
+					<button type="button" class="push-button secondary">Cancel</button>
+				</div>
+			</form>
+		</div>
+
+		<div id="confirm-modal" class="modal">
+			<div class="modal-message">You sure? Delete?</div>
+			<div class="modal-buttons">
+				<button id="confirm" type="button" class="push-button">Yes</button>
+				<button id="deny" type="button" class="push-button secondary">No</button>
+			</div>
+		</div>
+
 	</div>
 
 	<script src="/dist/js/dashboard.js"></script>
