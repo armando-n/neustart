@@ -29,6 +29,65 @@ function init() {
 	document.querySelector('#block-time-modal button[type=button]').onclick = cancelTimeClick;
 	document.querySelector('#block-note-modal button[type=submit]').onclick = saveNoteClicked;
 	document.querySelector('#block-note-modal button[type=button]').onclick = cancelNoteClicked;
+
+	// responsiveness handler
+	window.addEventListener('resize', debounceResize);
+}
+
+let debounceResizeTimer;
+function debounceResize() {
+	clearTimeout(debounceResizeTimer);
+	debounceResizeTimer = setTimeout(resize, 300);
+}
+
+function resize() {
+	console.log('resizing ...');
+	const dimensions = getDimensions();
+	d3.selectAll('rect.day')
+		.attr('width', dimensions.dayWidth)
+		.attr('height', dimensions.dayHeight)
+		.each(day => {
+			const domainStart = moment().day(day.index).startOf('day').toDate();
+			const domainEnd = moment().day(day.index).endOf('day').toDate();
+			const yScale = d3.scaleTime()
+				.domain([domainStart, domainEnd])
+				.range([0, dimensions.dayHeight]);
+			day.scale = yScale;
+		});
+	d3.selectAll('rect.time-block')
+		.attr('width', dimensions.dayWidth)
+		.attr('height', block => getDayScale(block.dayIndex)(block.endTime) - getDayScale(block.dayIndex)(block.startTime))
+		.attr('y', block => getDayScale(block.dayIndex)(block.startTime));
+	d3.selectAll('g.day')
+		.attr('transform', day => `translate(${day.index*dimensions.dayWidth}, 0)`);
+	d3.selectAll('g.day-square')
+		.attr('transform', `translate(0, ${dimensions.marginTop})`);
+	d3.selectAll('.background, .empty-space-events')
+		.attr('width', dimensions.canvasWidth)
+		.attr('height', dimensions.canvasHeight);
+	d3.selectAll('.aboveground-canvas > line')
+		.attr('x2', dimensions.canvasWidth);
+	d3.selectAll('text.day-title')
+		.attr('x', dimensions.dayWidth / 2);
+
+	// scale for axes
+	const domainStart = moment().startOf('day').toDate();
+	const domainEnd = moment().endOf('day').add(1, 'minutes').toDate();
+	const scale = d3.scaleTime()
+		.domain([domainStart, domainEnd])
+		.range([0, dimensions.dayHeight]);
+
+	// left axis
+	const leftAxis = d3.axisLeft(scale).ticks(5, "%I %p");
+	d3.select('g.axis.left')
+		.attr('transform', `translate(${dimensions.marginLeft}, ${dimensions.marginTop-0.5})`)
+		.call(leftAxis);
+
+	// right axis
+	const rightAxis = d3.axisRight(scale).ticks(5, "%I %p");
+	d3.select('g.axis.right')
+		.attr('transform', `translate(${dimensions.svgWidth - dimensions.marginRight}, ${dimensions.marginTop-0.5})`)
+		.call(rightAxis);
 }
 
 export function getMode() {
@@ -64,14 +123,14 @@ export function createSvg(weeklySchedule) {
 	// left axis
 	const leftAxis = d3.axisLeft(scale).ticks(5, "%I %p");
 	svg.append('g')
-		.attr('class', 'axis')
+		.attr('class', 'axis left')
 		.attr('transform', `translate(${dimensions.marginLeft}, ${dimensions.marginTop-0.5})`)
 		.call(leftAxis);
 
 	// right axis
 	const rightAxis = d3.axisRight(scale).ticks(5, "%I %p");
 	svg.append('g')
-		.attr('class', 'axis')
+		.attr('class', 'axis right')
 		.attr('transform', `translate(${dimensions.svgWidth - dimensions.marginRight}, ${dimensions.marginTop-0.5})`)
 		.call(rightAxis);
 
@@ -132,6 +191,7 @@ export function createSvg(weeklySchedule) {
 
 	// invisible surface to handle mouseover effects in empty spaces
 	mouseTrackingG.append('rect')
+		.attr('class', 'empty-space-events')
 		.attr('x', 0)
 		.attr('y', 0)
 		.attr('width', dimensions.canvasWidth)
@@ -534,7 +594,8 @@ export function setWeeklyData(weeklySchedule = timeBlockService.getActiveWeeklyS
 	// bind time block data to time block rects
 	const blockRects = d3.selectAll('g.day-square') // this is the <g> day-square element
 		.selectAll('rect.time-block')
-		.data(day => day.values, block => block.blockID); // values are time blocks
+		.data(day => day.values, block => block.blockID) // values are time blocks
+		.each(function(block) { block.rect = this });
 
 	// ceate/update/delete time block rects
 	const updateCompletePromise = updateScheduleView(blockRects, weeklySchedule);
@@ -612,7 +673,7 @@ export function getDimensions() {
 	const clientHeight = window.innerHeight;
 	const dayHeight = dayWidth;
 	const svgHeight = dayHeight + marginTop + marginBottom;
-	const canvasHeight = svgHeight - marginBottom;
+	const canvasHeight = svgHeight - marginBottom - marginTop;
 
 	return {
 		colPadding,
