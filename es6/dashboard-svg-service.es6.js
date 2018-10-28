@@ -9,7 +9,7 @@ import WeeklyTimeBlock from './weekly-timeblock-model.es6.js';
 import * as copyMode from './copy-mode.es6.js';
 import IconLoader from './icon-loader.es6.js';
 import Mode from './mode';
-import { BLOCK_COLOR_CLASSES } from './constants.js';
+import { BLOCK_COLOR_CLASSES, DAY_MIN_WIDTH } from './constants.js';
 
 init();
 
@@ -41,8 +41,21 @@ function debounceResize() {
 }
 
 function resize() {
-	console.log('resizing ...');
 	const dimensions = getDimensions();
+
+	// hide/show days to maintain min day width
+	if (dimensions.numDaysToShow < 7) {
+		d3.selectAll('g.day').each(function(day) {
+			d3.select(this).style('display', day.index < dimensions.numDaysToShow ? 'inline' : 'none');
+		});
+	} else {
+		d3.selectAll('g.day').style('display', 'inline');
+	}
+
+	// resize stuff
+	d3.select('#svg')
+		.attr('width', dimensions.svgWidth)
+		.attr('height', dimensions.svgHeight);
 	d3.selectAll('rect.day')
 		.attr('width', dimensions.dayWidth)
 		.attr('height', dimensions.dayHeight)
@@ -64,7 +77,7 @@ function resize() {
 		.attr('transform', `translate(0, ${dimensions.marginTop})`);
 	d3.selectAll('.background, .empty-space-events')
 		.attr('width', dimensions.canvasWidth)
-		.attr('height', dimensions.canvasHeight);
+		.attr('height', dimensions.dayHeight);
 	d3.selectAll('.aboveground-canvas > line')
 		.attr('x2', dimensions.canvasWidth);
 	d3.selectAll('text.day-title')
@@ -88,6 +101,13 @@ function resize() {
 	d3.select('g.axis.right')
 		.attr('transform', `translate(${dimensions.svgWidth - dimensions.marginRight}, ${dimensions.marginTop-0.5})`)
 		.call(rightAxis);
+}
+
+function getNumberOfDaysToShow(dayWidth = getDimensions().dayWidth) {
+	const numOverflowPixels = (DAY_MIN_WIDTH - dayWidth) * 7;
+	const numOverflowDays = Math.ceil(numOverflowPixels / dayWidth);
+	const numDaysToShow = 7 - numOverflowDays;
+	return numDaysToShow >= 1 ? numDaysToShow : 1;
 }
 
 export function getMode() {
@@ -668,12 +688,18 @@ export function getDimensions() {
 	const clientWidth = window.innerWidth;
 	const svgWidth = clientWidth - colPadding*2;
 	const canvasWidth = svgWidth - marginLeft - marginRight;
-	const dayWidth = canvasWidth / 7;
+	let dayWidth = canvasWidth / 7;
+
+	let numDaysToShow = 7;
+	if (dayWidth < DAY_MIN_WIDTH) {
+		numDaysToShow = getNumberOfDaysToShow(dayWidth);
+		dayWidth = canvasWidth / numDaysToShow;
+	}
 
 	const clientHeight = window.innerHeight;
 	const dayHeight = dayWidth;
+	const canvasHeight = dayHeight;
 	const svgHeight = dayHeight + marginTop + marginBottom;
-	const canvasHeight = svgHeight - marginBottom - marginTop;
 
 	return {
 		colPadding,
@@ -689,6 +715,7 @@ export function getDimensions() {
 		svgHeight,
 		canvasHeight,
 		dayHeight,
+		numDaysToShow,
 	}
 }
 
@@ -701,6 +728,16 @@ export function getDayScale(dayIndex) {
 		throw new Error(`Unable to find scale for day index ${dayIndex}`);
 
 	return scale;
+}
+
+function getGForDay(dayIndex) {
+	let targetDaySquare;
+	d3.selectAll('g.day')
+		.filter(day => day.index === dayIndex)
+		.each(function() {
+			targetDaySquare = d3.select(this);
+		});
+	return targetDaySquare;
 }
 
 function getSquareForDay(dayIndex) {
