@@ -13,6 +13,8 @@ import { BLOCK_COLOR_CLASSES, DAY_MIN_WIDTH } from './constants.js';
 
 init();
 
+const daysToShow = [0, 1, 2, 3, 4, 5, 6];
+
 function init() {
 	const modalSaveButtons = d3.selectAll('.modal-buttons button[type=submit]').each(function () {
 		IconLoader.createSaveIcon(this, undefined, undefined, undefined, true, -6, 1)
@@ -40,13 +42,46 @@ function debounceResize() {
 	debounceResizeTimer = setTimeout(resize, 300);
 }
 
+function setDaysToShow(numDaysToShow = getDimensions().numDaysToShow, leftOffset = 0) {
+	daysToShow.length = 0;
+
+	if (7 - numDaysToShow - leftOffset < 0)
+		leftOffset = 7 - numDaysToShow;
+
+	for (let i = 0 + leftOffset; i < numDaysToShow + leftOffset; i++)
+		daysToShow.push(i);
+
+	responsiveUpdate();
+}
+
+export function scrollDaysLeft() {
+	const numDaysToShow = daysToShow.length;
+	let leftOffset = daysToShow[0] - 1;
+	if (leftOffset < 0)
+		leftOffset = 0;
+	setDaysToShow(numDaysToShow, leftOffset);
+}
+
+export function scrollDaysRight() {
+	const numDaysToShow = daysToShow.length;
+	let leftOffset = daysToShow[0] + 1;
+	if (numDaysToShow + leftOffset > 7)
+		leftOffset = 7 - numDaysToShow;
+	setDaysToShow(numDaysToShow, leftOffset);
+}
+
 function resize() {
+	setDaysToShow();
+}
+
+function responsiveUpdate() {
 	const dimensions = getDimensions();
+	const leftOffset = daysToShow[0];
 
 	// hide/show days to maintain min day width
 	if (dimensions.numDaysToShow < 7) {
 		d3.selectAll('g.day').each(function(day) {
-			d3.select(this).style('display', day.index < dimensions.numDaysToShow ? 'inline' : 'none');
+			d3.select(this).style('display', daysToShow.includes(day.index) ? 'inline' : 'none');
 		});
 	} else {
 		d3.selectAll('g.day').style('display', 'inline');
@@ -72,7 +107,7 @@ function resize() {
 		.attr('height', block => getDayScale(block.dayIndex)(block.endTime) - getDayScale(block.dayIndex)(block.startTime))
 		.attr('y', block => getDayScale(block.dayIndex)(block.startTime));
 	d3.selectAll('g.day')
-		.attr('transform', day => `translate(${day.index*dimensions.dayWidth}, 0)`);
+		.attr('transform', day => `translate(${(day.index - leftOffset)*dimensions.dayWidth}, 0)`);
 	d3.selectAll('g.day-square')
 		.attr('transform', `translate(0, ${dimensions.marginTop})`);
 	d3.selectAll('.background, .empty-space-events')

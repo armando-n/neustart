@@ -15,6 +15,8 @@ function init() {
 	document.getElementById('toolbar-delete').addEventListener('click', deleteClicked);
 	document.getElementById('toolbar-split').addEventListener('click', splitClicked);
 	document.getElementById('toolbar-add').addEventListener('click', addClicked);
+	document.getElementById('scroll-days-left-button').addEventListener('click', scrollDaysLeftClicked);
+	document.getElementById('scroll-days-right-button').addEventListener('click', scrollDaysRightClicked);
 }
 
 export function clearButtons() {
@@ -38,6 +40,13 @@ export function removeCopyModeButtons() {
 	document.getElementById('toolbar-paste').style.display = 'none';
 	document.getElementById('copy-overwrite').style.display = 'none';
 	document.querySelector('label[for="copy-overwrite"]').style.display = 'none';
+}
+
+export function setShowScrollButtons(daysShowing = [0, 1, 2, 3, 4, 5, 6]) {
+	const showLeftButton = daysShowing[0] !== 0;
+	const showRightButton = daysShowing[daysShowing.length-1] !== 6;
+	document.getElementById('scroll-days-left-button').style.display = showLeftButton ? 'block' : 'none';
+	document.getElementById('scroll-days-right-button').style.display = showRightButton ? 'block' : 'none';
 }
 
 function showAllButtons(...exceptions) {
@@ -121,4 +130,12 @@ function splitClicked() {
 
 function addClicked() {
 	console.log('add clicked');
+}
+
+function scrollDaysLeftClicked() {
+	svgService.scrollDaysLeft();
+}
+
+function scrollDaysRightClicked() {
+	svgService.scrollDaysRight();
 }

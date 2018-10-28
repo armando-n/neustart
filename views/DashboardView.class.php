@@ -24,6 +24,7 @@ class DashboardView {
 
 	<div id="top-section">
 		<div id="toolbar">
+			<div id="scroll-days-left-button"><</div>
 			<div id="toolbar-buttons">
 				<button id="toolbar-fill" class="toggle-button" type="button">Fill</button>
 				<button id="toolbar-cancel" class="toggle-button" type="button">Cancel</button>
@@ -35,6 +36,7 @@ class DashboardView {
 				<button id="toolbar-split" class="toggle-button" type="button">Split</button>
 				<button id="toolbar-add" class="toggle-button" type="button">Add</button>
 			</div>
+			<div id="scroll-days-right-button">></div>
 			<div id="debug-mode"></div>
 		</div>
 
