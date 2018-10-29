@@ -672,12 +672,12 @@ function getSnapTo(svgElement) {
 
 	// determine day of week
 	const dimensions = getDimensions();
-	const step = dimensions.canvasWidth / 7;
-	for (var dayNumber = 0; dayNumber <= 6; dayNumber++) {
-		if (step*dayNumber < mouseX && mouseX < step*(dayNumber+1))
+	const step = dimensions.dayWidth;
+	for (var dayIndex = 0; dayIndex <= 6; dayIndex++) {
+		if (step*dayIndex < mouseX && mouseX < step*(dayIndex+1))
 			break;
 	}
-	if (dayNumber > 6)
+	if (dayIndex > 6)
 		throw new Error('Day not found in SvgService.getSnapTo');
 
 	// create scale
@@ -692,9 +692,9 @@ function getSnapTo(svgElement) {
 	const snapToY = scale(snapToTime);
 
 	// find the boundaries' time-values for this empty space
-	const [topBoundaryTime, bottomBoundaryTime] = timeBlockService.getActiveWeeklySchedule().findEmptyBoundaries(snapToTime, dayNumber);
+	const [topBoundaryTime, bottomBoundaryTime] = timeBlockService.getActiveWeeklySchedule().findEmptyBoundaries(snapToTime, dayIndex);
 
-	return { x: mouseX, y: snapToY, day: dayNumber, hours12: snapToHours12, hours24: snapToTime.getHours(), minutes: snapToTime.getMinutes(), meridiem, topBoundaryTime, bottomBoundaryTime, scale };
+	return { x: mouseX, y: snapToY, day: dayIndex, hours12: snapToHours12, hours24: snapToTime.getHours(), minutes: snapToTime.getMinutes(), meridiem, topBoundaryTime, bottomBoundaryTime, scale };
 }
 
 function findClosest30Mins(time) {
@@ -1656,7 +1656,7 @@ function emptySpaceMouseDown() {
 
 	d3.select('.underground-canvas').append('rect')
 		.attr('class', 'time-block time-block-new')
-		.attr('x', dimensions.dayWidth * (snapTo.day - daysToShow[0] - 1))
+		.attr('x', dimensions.dayWidth * (snapTo.day - daysToShow[0]))
 		.attr('y', snapTo.y)
 		.attr('width', dimensions.dayWidth)
 		.attr('height', newRectHeight)
@@ -1723,7 +1723,7 @@ function emptySpaceMouseOut() {
 		newTimeBlock.rect = newBlockRect.node();
 		newBlockRect.datum(newTimeBlock);
 
-		getSquareForDay(snapTo.day - 1).node().appendChild(newBlockRect.node());
+		getSquareForDay(snapTo.day).node().appendChild(newBlockRect.node());
 		showBlockOverlay(newTimeBlock, true);
 	}
 
